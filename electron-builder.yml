@@ -38,7 +38,7 @@ win:
     - target: portable
 nsis:
   artifactName: ${productName}-${version}-setup.${ext}
-  shortcutName: ${productName}
+  shortcutName: 西农er cherry chat
   uninstallDisplayName: ${productName}
   createDesktopShortcut: always
   allowToChangeInstallationDirectory: true

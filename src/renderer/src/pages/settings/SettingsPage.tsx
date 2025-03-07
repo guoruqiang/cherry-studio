@@ -2,7 +2,6 @@ import {
   CloudOutlined,
   CodeOutlined,
   GlobalOutlined,
-  InfoCircleOutlined,
   LayoutOutlined,
   MacCommandOutlined,
   RocketOutlined,
@@ -17,7 +16,7 @@ import { useTranslation } from 'react-i18next'
 import { Link, Route, Routes, useLocation } from 'react-router-dom'
 import styled from 'styled-components'
 
-import AboutSettings from './AboutSettings'
+// import AboutSettings from './AboutSettings'
 import DataSettings from './DataSettings/DataSettings'
 import DisplaySettings from './DisplaySettings/DisplaySettings'
 import GeneralSettings from './GeneralSettings'
@@ -98,12 +97,12 @@ const SettingsPage: FC = () => {
               {t('settings.data.title')}
             </MenuItem>
           </MenuItemLink>
-          <MenuItemLink to="/settings/about">
+          {/* <MenuItemLink to="/settings/about">
             <MenuItem className={isRoute('/settings/about')}>
               <InfoCircleOutlined />
               {t('settings.about')}
             </MenuItem>
-          </MenuItemLink>
+          </MenuItemLink> */}
         </SettingMenus>
         <SettingContent>
           <Routes>
@@ -116,7 +115,7 @@ const SettingsPage: FC = () => {
             <Route path="data/*" element={<DataSettings />} />
             <Route path="quickAssistant" element={<QuickAssistantSettings />} />
             <Route path="shortcut" element={<ShortcutSettings />} />
-            <Route path="about" element={<AboutSettings />} />
+            {/* <Route path="about" element={<AboutSettings />} /> */}
           </Routes>
         </SettingContent>
       </ContentContainer>

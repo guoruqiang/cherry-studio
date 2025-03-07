@@ -285,7 +285,7 @@ export interface TranslateHistory {
   createdAt: string
 }
 
-export type SidebarIcon = 'assistants' | 'agents' | 'paintings' | 'translate' | 'minapp' | 'knowledge' | 'files'
+export type SidebarIcon = 'assistants' | 'agents' | 'translate' | 'knowledge' | 'files' | 'minapp'
 
 export type WebSearchProvider = {
   id: string
@@ -293,6 +293,7 @@ export type WebSearchProvider = {
   apiKey?: string
   apiHost?: string
   engines?: string[]
+  enabled?: boolean
 }
 
 export type WebSearchResponse = {

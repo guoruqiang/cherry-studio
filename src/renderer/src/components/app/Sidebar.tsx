@@ -53,7 +53,7 @@ const Sidebar: FC = () => {
     MinApp.start({
       id: 'docs',
       name: t('docs.title'),
-      url: 'https://docs.cherry-ai.com/',
+      url: 'https://help.nwafu-ai.cn',
       logo: AppLogo
     })
   }
@@ -87,7 +87,7 @@ const Sidebar: FC = () => {
         <Tooltip title={t('docs.title')} mouseEnterDelay={0.8} placement="right">
           <Icon
             onClick={onOpenDocs}
-            className={minappShow && MinApp.app?.url === 'https://docs.cherry-ai.com/' ? 'active' : ''}>
+            className={minappShow && MinApp.app?.url === 'https://help.nwafu-ai.cn' ? 'active' : ''}>
             <QuestionCircleOutlined />
           </Icon>
         </Tooltip>

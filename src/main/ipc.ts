@@ -6,7 +6,6 @@ import { BrowserWindow, ipcMain, ProxyConfig, session, shell } from 'electron'
 import log from 'electron-log'
 
 import { titleBarOverlayDark, titleBarOverlayLight } from './config'
-import AppUpdater from './services/AppUpdater'
 import BackupManager from './services/BackupManager'
 import { configManager } from './services/ConfigManager'
 import { ExportService } from './services/ExportService'
@@ -28,7 +27,8 @@ const exportService = new ExportService(fileManager)
 const mcpService = new MCPService()
 
 export function registerIpc(mainWindow: BrowserWindow, app: Electron.App) {
-  const appUpdater = new AppUpdater(mainWindow)
+  // 由于我们注释掉了更新功能，这个实例暂时不需要了
+  // const appUpdater = new AppUpdater(mainWindow)
 
   ipcMain.handle('app:info', () => ({
     version: app.getVersion(),
@@ -50,7 +50,9 @@ export function registerIpc(mainWindow: BrowserWindow, app: Electron.App) {
   ipcMain.handle('open:website', (_, url: string) => shell.openExternal(url))
 
   // Update
-  ipcMain.handle('app:show-update-dialog', () => appUpdater.showUpdateDialog(mainWindow))
+  ipcMain.handle('app:show-update-dialog', () => {
+    // 注释掉更新对话框调用
+  })
 
   // language
   ipcMain.handle('app:set-language', (_, language) => {
@@ -103,10 +105,10 @@ export function registerIpc(mainWindow: BrowserWindow, app: Electron.App) {
 
   // check for update
   ipcMain.handle('app:check-for-update', async () => {
-    const update = await appUpdater.autoUpdater.checkForUpdates()
+    // 注释掉检查更新功能，返回空结果
     return {
-      currentVersion: appUpdater.autoUpdater.currentVersion,
-      updateInfo: update?.updateInfo
+      currentVersion: app.getVersion(),
+      updateInfo: null
     }
   })
 

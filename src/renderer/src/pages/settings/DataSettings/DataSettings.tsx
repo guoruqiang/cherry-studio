@@ -92,7 +92,7 @@ const NotionSettings: FC = () => {
     MinApp.start({
       id: 'notion-help',
       name: 'Notion Help',
-      url: 'https://docs.cherry-ai.com/advanced-basic/notion'
+      url: 'https://help.nwafu-ai.cnadvanced-basic/notion'
     })
   }
 
