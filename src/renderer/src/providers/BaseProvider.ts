@@ -71,8 +71,8 @@ export default abstract class BaseProvider {
 
   public defaultHeaders() {
     return {
-      'HTTP-Referer': 'https://gpt.nwafu-ai.cn',
-      'X-Title': '西农er Cherry Chat',
+      'HTTP-Referer': 'https://api.nwafu-ai.cn',
+      'X-Title': 'Cherry Chat',
       'X-Api-Key': this.apiKey
     }
   }

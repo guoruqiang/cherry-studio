@@ -163,7 +163,7 @@ export const INITIAL_PROVIDERS: Provider[] = [
     apiHost: 'https://api.nwafu-ai.cn',
     models: SYSTEM_MODELS.openai,
     isSystem: true,
-    enabled: false
+    enabled: true
   }
   // {
   //   id: 'azure-openai',
