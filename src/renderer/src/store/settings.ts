@@ -4,14 +4,15 @@ import { CodeStyleVarious, LanguageVarious, ThemeMode, TranslateLanguageVarious 
 
 export type SendMessageShortcut = 'Enter' | 'Shift+Enter' | 'Ctrl+Enter' | 'Command+Enter'
 
-export type SidebarIcon = 'assistants' | 'agents' | 'paintings' | 'translate' | 'minapp' | 'knowledge' | 'files'
+// export type SidebarIcon = 'assistants' | 'agents' | 'paintings' | 'translate' | 'minapp' | 'knowledge' | 'files'
+export type SidebarIcon = 'assistants' | 'agents' | 'translate' | 'knowledge' | 'files' | 'minapp'
 
 export const DEFAULT_SIDEBAR_ICONS: SidebarIcon[] = [
   'assistants',
   'agents',
-  'paintings',
+  // 'paintings',
   'translate',
-  'minapp',
+  // 'minapp',
   'knowledge',
   'files'
 ]
@@ -75,7 +76,6 @@ export interface SettingsState {
   notionApiKey: string | null
   notionPageNameKey: string | null
   markdownExportPath: string | null
-  forceDollarMathInMarkdown: boolean
   thoughtAutoCollapse: boolean
   notionAutoSplit: boolean
   notionSplitSize: number
@@ -96,7 +96,7 @@ const initialState: SettingsState = {
   targetLanguage: 'english' as TranslateLanguageVarious,
   proxyMode: 'system',
   proxyUrl: undefined,
-  userName: '',
+  userName: "西农er's GPT",
   showMessageDivider: true,
   messageFont: 'system',
   showInputEstimatedTokens: false,
@@ -144,7 +144,6 @@ const initialState: SettingsState = {
   notionApiKey: '',
   notionPageNameKey: 'Name',
   markdownExportPath: null,
-  forceDollarMathInMarkdown: false,
   thoughtAutoCollapse: true,
   notionAutoSplit: false,
   notionSplitSize: 90,
@@ -327,9 +326,6 @@ const settingsSlice = createSlice({
     setmarkdownExportPath: (state, action: PayloadAction<string | null>) => {
       state.markdownExportPath = action.payload
     },
-    setForceDollarMathInMarkdown: (state, action: PayloadAction<boolean>) => {
-      state.forceDollarMathInMarkdown = action.payload
-    },
     setThoughtAutoCollapse: (state, action: PayloadAction<boolean>) => {
       state.thoughtAutoCollapse = action.payload
     },
@@ -412,7 +408,6 @@ export const {
   setNotionApiKey,
   setNotionPageNameKey,
   setmarkdownExportPath,
-  setForceDollarMathInMarkdown,
   setThoughtAutoCollapse,
   setNotionAutoSplit,
   setNotionSplitSize,

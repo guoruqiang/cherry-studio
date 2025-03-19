@@ -89,7 +89,7 @@ export class WindowService {
       width,
       height,
       autoHideMenuBar: true,
-      title: 'Cherry Studio',
+      title: '西农er Cherry Chat',
       ...windowOptions,
       parent,
       webPreferences: {
@@ -145,7 +145,6 @@ export class WindowService {
 
   private setupWindowEvents(mainWindow: BrowserWindow) {
     mainWindow.once('ready-to-show', () => {
-      mainWindow.webContents.setZoomFactor(configManager.getZoomFactor())
       mainWindow.show()
     })
 

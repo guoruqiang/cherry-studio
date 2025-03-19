@@ -116,8 +116,6 @@ export type Provider = {
   models: Model[]
   enabled?: boolean
   isSystem?: boolean
-  isAuthed?: boolean
-  rateLimit?: number
 }
 
 export type ProviderType = 'openai' | 'anthropic' | 'gemini' | 'qwenlm' | 'azure-openai'
@@ -296,8 +294,7 @@ export interface TranslateHistory {
   createdAt: string
 }
 
-export type SidebarIcon = 'assistants' | 'agents' | 'paintings' | 'translate' | 'minapp' | 'knowledge' | 'files'
-
+export type SidebarIcon = 'assistants' | 'agents' | 'translate' | 'knowledge' | 'files' | 'minapp'
 export type WebSearchProvider = {
   id: string
   name: string

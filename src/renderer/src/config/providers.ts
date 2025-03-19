@@ -66,7 +66,6 @@ const PROVIDER_LOGO_MAP = {
   'graphrag-kylin-mountain': GraphRagProviderLogo,
   minimax: MinimaxProviderLogo,
   github: GithubProviderLogo,
-  copilot: GithubProviderLogo,
   ocoolai: OcoolAiProviderLogo,
   together: TogetherProviderLogo,
   fireworks: FireworksProviderLogo,
@@ -96,13 +95,13 @@ export function getProviderLogo(providerId: string) {
 export const PROVIDER_CONFIG = {
   openai: {
     api: {
-      url: 'https://api.openai.com'
+      url: 'https://api.nwafu-ai.cn'
     },
     websites: {
-      official: 'https://openai.com/',
-      apiKey: 'https://platform.openai.com/api-keys',
-      docs: 'https://platform.openai.com/docs',
-      models: 'https://platform.openai.com/docs/models'
+      official: 'https://gpt.nwafu-ai.cn/',
+      apiKey: 'https://gpt.nwafu-ai.cn/token',
+      docs: 'https://gpt.nwafu-ai.cn/',
+      models: 'https://gpt.nwafu-ai.cn/pricing'
     }
   },
   o3: {
@@ -237,11 +236,6 @@ export const PROVIDER_CONFIG = {
       apiKey: 'https://github.com/settings/tokens',
       docs: 'https://docs.github.com/en/github-models',
       models: 'https://github.com/marketplace/models'
-    }
-  },
-  copilot: {
-    api: {
-      url: 'https://api.githubcopilot.com/'
     }
   },
   yi: {

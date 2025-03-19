@@ -1,5 +1,5 @@
 appId: com.kangfenmao.CherryStudio
-productName: Cherry Studio
+productName: 西农er Cherry Chat
 directories:
   buildResources: build
 files:
@@ -31,7 +31,7 @@ asarUnpack:
   - resources/**
   - '**/*.{node,dll,metal,exp,lib}'
 win:
-  executableName: Cherry Studio
+  executableName: 西农er Cherry Chat
   artifactName: ${productName}-${version}-portable.${ext}
   target:
     - target: nsis

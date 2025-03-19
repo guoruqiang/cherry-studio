@@ -246,12 +246,8 @@ export function loadScript(url: string) {
 }
 
 export function convertMathFormula(input) {
-  if (!input) return input
-
-  let result = input
-  result = result.replaceAll('\\[', '$$$$').replaceAll('\\]', '$$$$')
-  result = result.replaceAll('\\(', '$$').replaceAll('\\)', '$$')
-  return result
+  // 使用正则表达式匹配并替换公式格式
+  return input.replaceAll(/\\\[/g, '$$$$').replaceAll(/\\\]/g, '$$$$')
 }
 
 export function getBriefInfo(text: string, maxLength: number = 50): string {

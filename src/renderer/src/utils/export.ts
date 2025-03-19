@@ -5,15 +5,14 @@ import { getMessageTitle } from '@renderer/services/MessagesService'
 import store from '@renderer/store'
 import { setExportState } from '@renderer/store/runtime'
 import { Message, Topic } from '@renderer/types'
-import { convertMathFormula, removeSpecialCharactersForFileName } from '@renderer/utils/index'
+import { removeSpecialCharactersForFileName } from '@renderer/utils/index'
 import { markdownToBlocks } from '@tryfabric/martian'
 import dayjs from 'dayjs'
 
 export const messageToMarkdown = (message: Message) => {
-  const { forceDollarMathInMarkdown } = store.getState().settings
   const roleText = message.role === 'user' ? '🧑‍💻 User' : '🤖 Assistant'
   const titleSection = `### ${roleText}`
-  const contentSection = forceDollarMathInMarkdown ? convertMathFormula(message.content) : message.content
+  const contentSection = message.content
 
   return [titleSection, '', contentSection].join('\n')
 }

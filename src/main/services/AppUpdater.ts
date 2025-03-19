@@ -1,15 +1,19 @@
-import { UpdateInfo } from 'builder-util-runtime'
-import { app, BrowserWindow, dialog } from 'electron'
-import logger from 'electron-log'
+// import { UpdateInfo } from 'builder-util-runtime'
+// import { app, BrowserWindow, dialog } from 'electron'
+// import logger from 'electron-log'
+import { BrowserWindow } from 'electron'
 import { AppUpdater as _AppUpdater, autoUpdater } from 'electron-updater'
 
-import icon from '../../../build/icon.png?asset'
+// import icon from '../../../build/icon.png?asset'
 
 export default class AppUpdater {
   autoUpdater: _AppUpdater = autoUpdater
-  private releaseInfo: UpdateInfo | undefined
+  // private releaseInfo: UpdateInfo | undefined
 
-  constructor(mainWindow: BrowserWindow) {
+  // constructor(mainWindow: BrowserWindow) {
+  constructor(_mainWindow: BrowserWindow) {
+    // 注释掉更新功能
+    /*
     logger.transports.file.level = 'info'
 
     autoUpdater.logger = logger
@@ -48,11 +52,15 @@ export default class AppUpdater {
       this.releaseInfo = releaseInfo
       logger.info('下载完成', releaseInfo)
     })
+    */
 
     this.autoUpdater = autoUpdater
   }
 
-  public async showUpdateDialog(mainWindow: BrowserWindow) {
+  // public async showUpdateDialog(mainWindow: BrowserWindow) {
+  public async showUpdateDialog(_mainWindow: BrowserWindow) {
+    // 注释掉更新对话框
+    /*
     if (!this.releaseInfo) {
       return
     }
@@ -76,8 +84,10 @@ export default class AppUpdater {
           mainWindow.webContents.send('update-downloaded-cancelled')
         }
       })
+    */
   }
 
+/*
   private formatReleaseNotes(releaseNotes: string | ReleaseNoteInfo[] | null | undefined): string {
     if (!releaseNotes) {
       return '暂无更新说明'
@@ -94,4 +104,6 @@ export default class AppUpdater {
 interface ReleaseNoteInfo {
   readonly version: string
   readonly note: string | null
+}
+*/
 }

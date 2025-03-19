@@ -6,10 +6,9 @@ import { BrowserWindow, ipcMain, session, shell } from 'electron'
 import log from 'electron-log'
 
 import { titleBarOverlayDark, titleBarOverlayLight } from './config'
-import AppUpdater from './services/AppUpdater'
+// import AppUpdater from './services/AppUpdater'
 import BackupManager from './services/BackupManager'
 import { configManager } from './services/ConfigManager'
-import CopilotService from './services/CopilotService'
 import { ExportService } from './services/ExportService'
 import FileService from './services/FileService'
 import FileStorage from './services/FileStorage'
@@ -31,7 +30,8 @@ const exportService = new ExportService(fileManager)
 const mcpService = new MCPService()
 
 export function registerIpc(mainWindow: BrowserWindow, app: Electron.App) {
-  const appUpdater = new AppUpdater(mainWindow)
+  // 由于我们注释掉了更新功能，这个实例暂时不需要了
+  // const appUpdater = new AppUpdater(mainWindow)
 
   ipcMain.handle('app:info', () => ({
     version: app.getVersion(),
@@ -61,7 +61,9 @@ export function registerIpc(mainWindow: BrowserWindow, app: Electron.App) {
   ipcMain.handle('open:website', (_, url: string) => shell.openExternal(url))
 
   // Update
-  ipcMain.handle('app:show-update-dialog', () => appUpdater.showUpdateDialog(mainWindow))
+  ipcMain.handle('app:show-update-dialog', () => {
+    // 注释掉更新对话框调用
+  })
 
   // language
   ipcMain.handle('app:set-language', (_, language) => {
@@ -114,10 +116,10 @@ export function registerIpc(mainWindow: BrowserWindow, app: Electron.App) {
 
   // check for update
   ipcMain.handle('app:check-for-update', async () => {
-    const update = await appUpdater.autoUpdater.checkForUpdates()
+    // const update = await appUpdater.autoUpdater.checkForUpdates()
     return {
-      currentVersion: appUpdater.autoUpdater.currentVersion,
-      updateInfo: update?.updateInfo
+      currentVersion: app.getVersion(),
+      updateInfo: null
     }
   })
 
@@ -253,13 +255,6 @@ export function registerIpc(mainWindow: BrowserWindow, app: Electron.App) {
     mainWindow?.webContents.send('mcp:servers-updated', servers)
   })
 
+  // Clean up MCP services when app quits
   app.on('before-quit', () => mcpService.cleanup())
-
-  //copilot
-  ipcMain.handle('copilot:get-auth-message', CopilotService.getAuthMessage)
-  ipcMain.handle('copilot:get-copilot-token', CopilotService.getCopilotToken)
-  ipcMain.handle('copilot:save-copilot-token', CopilotService.saveCopilotToken)
-  ipcMain.handle('copilot:get-token', CopilotService.getToken)
-  ipcMain.handle('copilot:logout', CopilotService.logout)
-  ipcMain.handle('copilot:get-user', CopilotService.getUser)
 }
