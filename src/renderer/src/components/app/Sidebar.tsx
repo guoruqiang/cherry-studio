@@ -15,10 +15,8 @@ import {
   FileSearch,
   Folder,
   Languages,
-  LayoutGrid,
   MessageSquareQuote,
   Moon,
-  Palette,
   Settings,
   Sparkle,
   Sun,
@@ -36,7 +34,6 @@ import UserPopup from '../Popups/UserPopup'
 const Sidebar: FC = () => {
   const { hideMinappPopup, openMinapp } = useMinappPopup()
   const { minappShow, currentMinappId } = useRuntime()
-  const { sidebarIcons } = useSettings()
   const { pinned } = useMinapps()
 
   const { pathname } = useLocation()
@@ -50,7 +47,7 @@ const Sidebar: FC = () => {
 
   const backgroundColor = useNavBackgroundColor()
 
-  const showPinnedApps = pinned.length > 0 && sidebarIcons.visible.includes('minapp')
+  const showPinnedApps = pinned.length > 0
 
   const to = async (path: string) => {
     await modelGenerating()
@@ -62,7 +59,7 @@ const Sidebar: FC = () => {
     openMinapp({
       id: docsId,
       name: t('docs.title'),
-      url: 'https://docs.cherry-ai.com/',
+      url: 'https://help.nwafu-ai.cn/',
       logo: AppLogo
     })
   }
@@ -139,9 +136,7 @@ const MainMenus: FC = () => {
   const iconMap = {
     assistants: <MessageSquareQuote size={18} className="icon" />,
     agents: <Sparkle size={18} className="icon" />,
-    paintings: <Palette size={18} className="icon" />,
     translate: <Languages size={18} className="icon" />,
-    minapp: <LayoutGrid size={18} className="icon" />,
     knowledge: <FileSearch size={18} className="icon" />,
     files: <Folder size={17} className="icon" />
   }
@@ -149,9 +144,7 @@ const MainMenus: FC = () => {
   const pathMap = {
     assistants: '/',
     agents: '/agents',
-    paintings: '/paintings',
     translate: '/translate',
-    minapp: '/apps',
     knowledge: '/knowledge',
     files: '/files'
   }

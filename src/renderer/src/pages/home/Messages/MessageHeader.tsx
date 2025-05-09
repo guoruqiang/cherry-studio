@@ -30,7 +30,7 @@ const getAvatarSource = (isLocalAi: boolean, modelId: string | undefined) => {
 const MessageHeader: FC<Props> = memo(({ assistant, model, message }) => {
   const avatar = useAvatar()
   const { theme } = useTheme()
-  const { userName, sidebarIcons } = useSettings()
+  const { userName } = useSettings()
   const { t } = useTranslation()
   const { isBubbleStyle } = useMessageStyle()
   const { openMinappById } = useMinappPopup()
@@ -50,7 +50,7 @@ const MessageHeader: FC<Props> = memo(({ assistant, model, message }) => {
   }, [message, model, t, userName])
 
   const isAssistantMessage = message.role === 'assistant'
-  const showMinappIcon = sidebarIcons.visible.includes('minapp')
+  const showMinappIcon = false
 
   const avatarName = useMemo(() => firstLetter(assistant?.name).toUpperCase(), [assistant?.name])
   const username = useMemo(() => removeLeadingEmoji(getUserName()), [getUserName])

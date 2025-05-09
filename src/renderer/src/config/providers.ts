@@ -100,13 +100,13 @@ export const SUPPORTED_REANK_PROVIDERS = ['silicon', 'jina', 'voyageai', 'dashsc
 export const PROVIDER_CONFIG = {
   openai: {
     api: {
-      url: 'https://api.openai.com'
+      url: 'https://api.nwafu-ai.cn'
     },
     websites: {
-      official: 'https://openai.com/',
-      apiKey: 'https://platform.openai.com/api-keys',
-      docs: 'https://platform.openai.com/docs',
-      models: 'https://platform.openai.com/docs/models'
+      official: 'https://gpt.nwafu-ai.cn/',
+      apiKey: 'https://gpt.nwafu-ai.cn/token',
+      docs: 'https://gpt.nwafu-ai.cn/',
+      models: 'https://gpt.nwafu-ai.cn/pricing'
     }
   },
   o3: {

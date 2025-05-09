@@ -3,16 +3,12 @@ import IndicatorLight from '@renderer/components/IndicatorLight'
 import { HStack } from '@renderer/components/Layout'
 import { APP_NAME, AppLogo } from '@renderer/config/env'
 import { useTheme } from '@renderer/context/ThemeProvider'
-import { useMinappPopup } from '@renderer/hooks/useMinappPopup'
+// import { useMinappPopup } from '@renderer/hooks/useMinappPopup'
 import { useRuntime } from '@renderer/hooks/useRuntime'
-import { useSettings } from '@renderer/hooks/useSettings'
-import { useAppDispatch } from '@renderer/store'
-import { setUpdateState } from '@renderer/store/runtime'
-import { ThemeMode } from '@renderer/types'
+// import { useSettings } from '@renderer/hooks/useSettings'
+// import { ThemeMode } from '@renderer/types'
 import { compareVersions, runAsyncFunction } from '@renderer/utils'
-import { Avatar, Button, Progress, Row, Switch, Tag } from 'antd'
-import { debounce } from 'lodash'
-import { FileCheck, Github, Globe, Mail, Rss } from 'lucide-react'
+import { Avatar, Progress, Row, Tag } from 'antd'
 import { FC, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Markdown from 'react-markdown'
@@ -23,71 +19,70 @@ import { SettingContainer, SettingDivider, SettingGroup, SettingRow, SettingTitl
 
 const AboutSettings: FC = () => {
   const [version, setVersion] = useState('')
-  const [isPortable, setIsPortable] = useState(false)
+  // const [isPortable, setIsPortable] = useState(false)
   const { t } = useTranslation()
-  const { autoCheckUpdate, setAutoCheckUpdate } = useSettings()
+  // const { autoCheckUpdate, setAutoCheckUpdate } = useSettings()
   const { theme } = useTheme()
-  const dispatch = useAppDispatch()
   const { update } = useRuntime()
-  const { openMinapp } = useMinappPopup()
+  // const { openMinapp } = useMinappPopup()
 
-  const onCheckUpdate = debounce(
-    async () => {
-      if (update.checking || update.downloading) {
-        return
-      }
+  // const onCheckUpdate = debounce(
+  //   async () => {
+  //     if (update.checking || update.downloading) {
+  //       return
+  //     }
 
-      if (update.downloaded) {
-        window.api.showUpdateDialog()
-        return
-      }
+  //     if (update.downloaded) {
+  //       window.api.showUpdateDialog()
+  //       return
+  //     }
 
-      dispatch(setUpdateState({ checking: true }))
+  //     dispatch(setUpdateState({ checking: true }))
 
-      try {
-        await window.api.checkForUpdate()
-      } catch (error) {
-        window.message.error(t('settings.about.updateError'))
-      }
+  //     try {
+  //       await window.api.checkForUpdate()
+  //     } catch (error) {
+  //       window.message.error(t('settings.about.updateError'))
+  //     }
 
-      dispatch(setUpdateState({ checking: false }))
-    },
-    2000,
-    { leading: true, trailing: false }
-  )
+  //     dispatch(setUpdateState({ checking: false }))
+  //   },
+  //   2000,
+  //   { leading: true, trailing: false }
+  // )
 
   const onOpenWebsite = (url: string) => {
     window.api.openWebsite(url)
   }
 
-  const mailto = async () => {
-    const email = 'support@cherry-ai.com'
-    const subject = `${APP_NAME} Feedback`
-    const version = (await window.api.getAppInfo()).version
-    const platform = window.electron.process.platform
-    const url = `mailto:${email}?subject=${subject}&body=%0A%0AVersion: ${version} | Platform: ${platform}`
-    onOpenWebsite(url)
-  }
+  // const mailto = async () => {
+  //   const email = 'support@cherry-ai.com'
+  //   const subject = `${APP_NAME} Feedback`
+  //   const version = (await window.api.getAppInfo()).version
+  //   const platform = window.electron.process.platform
+  //   const url = `mailto:${email}?subject=${subject}&body=%0A%0AVersion: ${version} | Platform: ${platform}`
+  //   onOpenWebsite(url)
+  // }
 
-  const showLicense = async () => {
-    const { appPath } = await window.api.getAppInfo()
-    openMinapp({
-      id: 'cherrystudio-license',
-      name: t('settings.about.license.title'),
-      url: `file://${appPath}/resources/cherry-studio/license.html`,
-      logo: AppLogo
-    })
-  }
+  // const showLicense = async () => {
+  //   const { appPath } = await window.api.getAppInfo()
+  //   openMinapp({
+  //     id: 'cherrystudio-license',
+  //     name: t('settings.about.license.title'),
+  //     url: `file://${appPath}/resources/cherry-studio/license.html`,
+  //     logo: AppLogo
+  //   })
+  // }
 
-  const showReleases = async () => {
-    const { appPath } = await window.api.getAppInfo()
-    openMinapp({
-      id: 'cherrystudio-releases',
-      name: t('settings.about.releases.title'),
-      url: `file://${appPath}/resources/cherry-studio/releases.html?theme=${theme === ThemeMode.dark ? 'dark' : 'light'}`,
-      logo: AppLogo
-    })
-  }
+  // const showReleases = async () => {
+  //   const { appPath } = await window.api.getAppInfo()
+  //   openMinapp({
+  //     id: 'cherrystudio-releases',
+  //     name: t('settings.about.releases.title'),
+  //     url: `file://${appPath}/resources/cherry-studio/releases.html?theme=${theme === ThemeMode.dark ? 'dark' : 'light'}`,
+  //     logo: AppLogo
+  //   })
+  // }
 
   const hasNewVersion = update?.info?.version && version ? compareVersions(update.info.version, version) > 0 : false
 
@@ -95,7 +90,7 @@ const AboutSettings: FC = () => {
     runAsyncFunction(async () => {
       const appInfo = await window.api.getAppInfo()
       setVersion(appInfo.version)
-      setIsPortable(appInfo.isPortable)
+      // setIsPortable(appInfo.isPortable)
     })
   }, [])
 
@@ -137,7 +132,7 @@ const AboutSettings: FC = () => {
               </Tag>
             </VersionWrapper>
           </Row>
-          {!isPortable && (
+          {/* {!isPortable && (
             <CheckUpdateButton
               onClick={onCheckUpdate}
               loading={update.checking}
@@ -148,9 +143,9 @@ const AboutSettings: FC = () => {
                   ? t('settings.about.checkUpdate.available')
                   : t('settings.about.checkUpdate')}
             </CheckUpdateButton>
-          )}
+          )} */}
         </AboutHeader>
-        {!isPortable && (
+        {/* {!isPortable && (
           <>
             <SettingDivider />
             <SettingRow>
@@ -158,7 +153,7 @@ const AboutSettings: FC = () => {
               <Switch value={autoCheckUpdate} onChange={(v) => setAutoCheckUpdate(v)} />
             </SettingRow>
           </>
-        )}
+        )} */}
       </SettingGroup>
       {hasNewVersion && update.info && (
         <SettingGroup theme={theme}>
@@ -177,7 +172,7 @@ const AboutSettings: FC = () => {
           </UpdateNotesWrapper>
         </SettingGroup>
       )}
-      <SettingGroup theme={theme}>
+      {/* <SettingGroup theme={theme}>
         <SettingRow>
           <SettingRowTitle>
             <Rss size={18} />
@@ -219,7 +214,7 @@ const AboutSettings: FC = () => {
           </SettingRowTitle>
           <Button onClick={mailto}>{t('settings.about.contact.button')}</Button>
         </SettingRow>
-      </SettingGroup>
+      </SettingGroup> */}
     </SettingContainer>
   )
 }
@@ -254,7 +249,12 @@ const Description = styled.div`
   text-align: center;
 `
 
-const CheckUpdateButton = styled(Button)``
+// const CheckUpdateButton = styled(Button)`
+//   position: absolute;
+//   right: 0;
+//   top: 50%;
+//   transform: translateY(-50%);
+// `
 
 const AvatarWrapper = styled.div`
   position: relative;

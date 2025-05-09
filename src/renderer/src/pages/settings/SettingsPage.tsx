@@ -1,5 +1,4 @@
 import { Navbar, NavbarCenter } from '@renderer/components/app/Navbar'
-import { useSidebarIconShow } from '@renderer/hooks/useSidebarIcon'
 import ModelSettings from '@renderer/pages/settings/ModelSettings/ModelSettings'
 import {
   Cloud,
@@ -7,7 +6,7 @@ import {
   Globe,
   HardDrive,
   Info,
-  LayoutGrid,
+  // LayoutGrid,
   MonitorCog,
   Package,
   Rocket,
@@ -38,7 +37,7 @@ const SettingsPage: FC = () => {
   const { pathname } = useLocation()
   const { t } = useTranslation()
 
-  const showMiniAppSettings = useSidebarIconShow('minapp')
+  const showMiniAppSettings = false
 
   const isRoute = (path: string): string => (pathname.startsWith(path) ? 'active' : '')
 
@@ -86,14 +85,14 @@ const SettingsPage: FC = () => {
               {t('settings.display.title')}
             </MenuItem>
           </MenuItemLink>
-          {showMiniAppSettings && (
+          {/* {showMiniAppSettings && (
             <MenuItemLink to="/settings/miniapps">
               <MenuItem className={isRoute('/settings/miniapps')}>
                 <LayoutGrid size={18} />
                 {t('settings.miniapps.title')}
               </MenuItem>
             </MenuItemLink>
-          )}
+          )} */}
           <MenuItemLink to="/settings/shortcut">
             <MenuItem className={isRoute('/settings/shortcut')}>
               <Command size={18} />
