@@ -168,7 +168,7 @@ export const INITIAL_PROVIDERS: Provider[] = [
   {
     id: 'openai',
     name: 'Nwafuer GPT',
-    type: 'openai',
+    type: 'openai-compatible',
     apiKey: '',
     apiHost: 'https://api.nwafu-ai.cn',
     models: SYSTEM_MODELS.openai,
