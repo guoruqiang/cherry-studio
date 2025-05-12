@@ -15,7 +15,7 @@ import {
 import { ThemeMode } from '@renderer/types'
 import { Button, Input, Segmented, Switch } from 'antd'
 import { Minus, Plus } from 'lucide-react'
-// import { FC, useCallback, useEffect, useMemo, useState } from 'react'
+import { FC, useCallback, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import styled from 'styled-components'
 
@@ -32,7 +32,7 @@ const DisplaySettings: FC = () => {
     clickAssistantToShowTopic,
     showTopicTime,
     customCss,
-    sidebarIcons,
+    // sidebarIcons,
     assistantIconType
   } = useSettings()
   const { theme: themeMode } = useTheme()
@@ -248,23 +248,22 @@ const TitleExtra = styled.div`
   font-size: 12px;
   cursor: pointer;
   text-decoration: underline;
-  opacity: 0.7;
+  margin-left: 8px;
+  color: #1890ff;
 `
-const ResetButtonWrapper = styled.div`
-  display: flex;
-  align-items: center;
-  justify-content: center;
-`
+// const ResetButtonWrapper = styled.div`
+//   display: flex;
+//   align-items: center;
+//   justify-content: center;
+// `
 const ZoomButtonGroup = styled.div`
   display: flex;
   align-items: center;
-  justify-content: flex-end;
-  width: 210px;
+  gap: 8px;
 `
 const ZoomValue = styled.span`
-  width: 40px;
+  min-width: 48px;
   text-align: center;
-  margin: 0 5px;
 `
 
 export default DisplaySettings
