@@ -189,7 +189,7 @@ export const TEXT_TO_IMAGE_REGEX = /flux|diffusion|stabilityai|sd-|dall|cogview|
 
 // Reasoning models
 export const REASONING_REGEX =
-  /^(o\d+(?:-[\w-]+)?|.*\b(?:reasoner|thinking)\b.*|.*-[rR]\d+.*|.*\bqwq(?:-[\w-]+)?\b.*|.*\bhunyuan-t1(?:-[\w-]+)?\b.*|.*\bglm-zero-preview\b.*|.*\bgrok-3-mini(?:-[\w-]+)?\b.*)$/i
+  /^(o\d+(?:-[\w-]+)?|.*\b(?:reasoning|reasoner|thinking)\b.*|.*-[rR]\d+.*|.*\bqwq(?:-[\w-]+)?\b.*|.*\bhunyuan-t1(?:-[\w-]+)?\b.*|.*\bglm-zero-preview\b.*|.*\bgrok-3-mini(?:-[\w-]+)?\b.*)$/i
 
 // Embedding models
 export const EMBEDDING_REGEX =
@@ -206,7 +206,7 @@ export const FUNCTION_CALLING_MODELS = [
   'gpt-4o-mini',
   'gpt-4',
   'gpt-4.5',
-  'o1(?:-[\\w-]+)?',
+  'o(1|3|4)(?:-[\\w-]+)?',
   'claude',
   'qwen',
   'qwen3',
@@ -2087,62 +2087,6 @@ export const SYSTEM_MODELS: Record<string, Model[]> = {
       name: 'Qwen2.5 72B Instruct',
       group: 'Qwen'
     }
-  ],
-  paratera: [
-    {
-      id: 'GLM-Z1-Flash-P002',
-      provider: 'paratera',
-      name: 'GLM-Z1-Flash-P002',
-      group: 'GLM'
-    },
-    {
-      id: 'GLM-Z1-AirX-P002',
-      provider: 'paratera',
-      name: 'GLM-Z1-AirX-P002',
-      group: 'GLM'
-    },
-    {
-      id: 'DeepSeek-V3-250324-P001',
-      provider: 'paratera',
-      name: 'DeepSeek-V3-250324-P001',
-      group: 'DeepSeek'
-    },
-    {
-      id: 'DeepSeek-R1',
-      provider: 'paratera',
-      name: 'DeepSeek-R1',
-      group: 'DeepSeek'
-    },
-    {
-      id: 'QwQ-N011-32B',
-      provider: 'paratera',
-      name: 'QwQ-N011-32B',
-      group: 'Qwen'
-    },
-    {
-      id: 'GLM-Embedding-2-P002',
-      provider: 'paratera',
-      name: 'GLM-Embedding-2-P002',
-      group: 'GLM'
-    },
-    {
-      id: 'GLM-Embedding-3-P002',
-      provider: 'paratera',
-      name: 'GLM-Embedding-3-P002',
-      group: 'GLM'
-    },
-    {
-      id: 'Doubao-Embedding-Text-P001',
-      provider: 'paratera',
-      name: 'Doubao-Embedding-Text-P001',
-      group: 'Doubao'
-    },
-    {
-      id: 'Doubao-Embedding-Large-Text-P001',
-      provider: 'paratera',
-      name: 'Doubao-Embedding-Large-Text-P001',
-      group: 'Doubao'
-    }
   ]
 }
 
@@ -2222,11 +2166,11 @@ export const TEXT_TO_IMAGES_MODELS_SUPPORT_IMAGE_ENHANCEMENT = [
 
 export const GENERATE_IMAGE_MODELS = [
   'gemini-2.0-flash-exp-image-generation',
+  'gemini-2.0-flash-preview-image-generation',
   'gemini-2.0-flash-exp',
   'grok-2-image-1212',
   'grok-2-image',
   'grok-2-image-latest',
-  'gpt-4o-image',
   'gpt-image-1'
 ]
 
@@ -2241,6 +2185,7 @@ export const GEMINI_SEARCH_MODELS = [
   'gemini-2.5-pro-exp-03-25',
   'gemini-2.5-pro-preview',
   'gemini-2.5-pro-preview-03-25',
+  'gemini-2.5-pro-preview-05-06',
   'gemini-2.5-flash-preview',
   'gemini-2.5-flash-preview-04-17'
 ]
@@ -2674,7 +2619,7 @@ export const THINKING_TOKEN_MAP: Record<string, { min: number; max: number }> = 
 
 export const findTokenLimit = (modelId: string): { min: number; max: number } | undefined => {
   for (const [pattern, limits] of Object.entries(THINKING_TOKEN_MAP)) {
-    if (new RegExp(pattern).test(modelId)) {
+    if (new RegExp(pattern, 'i').test(modelId)) {
       return limits
     }
   }
