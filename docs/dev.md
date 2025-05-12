@@ -29,6 +29,7 @@ corepack prepare yarn@4.6.0 --activate
 
 ```bash
 yarn install
+or yarn install --mode=update-lockfile
 ```
 
 ### Start
