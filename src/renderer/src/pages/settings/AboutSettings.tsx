@@ -3,14 +3,9 @@ import IndicatorLight from '@renderer/components/IndicatorLight'
 import { HStack } from '@renderer/components/Layout'
 import { APP_NAME, AppLogo } from '@renderer/config/env'
 import { useTheme } from '@renderer/context/ThemeProvider'
-// import { useMinappPopup } from '@renderer/hooks/useMinappPopup'
 import { useRuntime } from '@renderer/hooks/useRuntime'
-// import { useSettings } from '@renderer/hooks/useSettings'
-// import { ThemeMode } from '@renderer/types'
 import { compareVersions, runAsyncFunction } from '@renderer/utils'
-import { Avatar, Button, Progress, Row, Switch, Tag } from 'antd'
-import { debounce } from 'lodash'
-import { Bug, FileCheck, Github, Globe, Mail, Rss } from 'lucide-react'
+import { Avatar, Progress, Row, Tag } from 'antd'
 import { FC, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Markdown from 'react-markdown'
@@ -21,74 +16,13 @@ import { SettingContainer, SettingDivider, SettingGroup, SettingRow, SettingTitl
 
 const AboutSettings: FC = () => {
   const [version, setVersion] = useState('')
-  // const [isPortable, setIsPortable] = useState(false)
   const { t } = useTranslation()
-  // const { autoCheckUpdate, setAutoCheckUpdate } = useSettings()
   const { theme } = useTheme()
   const { update } = useRuntime()
-  // const { openMinapp } = useMinappPopup()
-
-  // const onCheckUpdate = debounce(
-  //   async () => {
-  //     if (update.checking || update.downloading) {
-  //       return
-  //     }
-
-  //     if (update.downloaded) {
-  //       window.api.showUpdateDialog()
-  //       return
-  //     }
-
-  //     dispatch(setUpdateState({ checking: true }))
-
-  //     try {
-  //       await window.api.checkForUpdate()
-  //     } catch (error) {
-  //       window.message.error(t('settings.about.updateError'))
-  //     }
-
-  //     dispatch(setUpdateState({ checking: false }))
-  //   },
-  //   2000,
-  //   { leading: true, trailing: false }
-  // )
 
   const onOpenWebsite = (url: string) => {
     window.api.openWebsite(url)
   }
-
-  // const mailto = async () => {
-  //   const email = 'support@cherry-ai.com'
-  //   const subject = `${APP_NAME} Feedback`
-  //   const version = (await window.api.getAppInfo()).version
-  //   const platform = window.electron.process.platform
-  //   const url = `mailto:${email}?subject=${subject}&body=%0A%0AVersion: ${version} | Platform: ${platform}`
-  //   onOpenWebsite(url)
-  // }
-
-  // const debug = async () => {
-  //   await window.api.devTools.toggle()
-  // }
-
-  // const showLicense = async () => {
-  //   const { appPath } = await window.api.getAppInfo()
-  //   openMinapp({
-  //     id: 'cherrystudio-license',
-  //     name: t('settings.about.license.title'),
-  //     url: `file://${appPath}/resources/cherry-studio/license.html`,
-  //     logo: AppLogo
-  //   })
-  // }
-
-  // const showReleases = async () => {
-  //   const { appPath } = await window.api.getAppInfo()
-  //   openMinapp({
-  //     id: 'cherrystudio-releases',
-  //     name: t('settings.about.releases.title'),
-  //     url: `file://${appPath}/resources/cherry-studio/releases.html?theme=${theme === ThemeMode.dark ? 'dark' : 'light'}`,
-  //     logo: AppLogo
-  //   })
-  // }
 
   const hasNewVersion = update?.info?.version && version ? compareVersions(update.info.version, version) > 0 : false
 
@@ -96,7 +30,6 @@ const AboutSettings: FC = () => {
     runAsyncFunction(async () => {
       const appInfo = await window.api.getAppInfo()
       setVersion(appInfo.version)
-      // setIsPortable(appInfo.isPortable)
     })
   }, [])
 
@@ -138,28 +71,7 @@ const AboutSettings: FC = () => {
               </Tag>
             </VersionWrapper>
           </Row>
-          {/* {!isPortable && (
-            <CheckUpdateButton
-              onClick={onCheckUpdate}
-              loading={update.checking}
-              disabled={update.downloading || update.checking}>
-              {update.downloading
-                ? t('settings.about.downloading')
-                : update.available
-                  ? t('settings.about.checkUpdate.available')
-                  : t('settings.about.checkUpdate')}
-            </CheckUpdateButton>
-          )} */}
         </AboutHeader>
-        {/* {!isPortable && (
-          <>
-            <SettingDivider />
-            <SettingRow>
-              <SettingRowTitle>{t('settings.general.auto_check_update.title')}</SettingRowTitle>
-              <Switch value={autoCheckUpdate} onChange={(v) => setAutoCheckUpdate(v)} />
-            </SettingRow>
-          </>
-        )} */}
       </SettingGroup>
       {hasNewVersion && update.info && (
         <SettingGroup theme={theme}>
@@ -178,57 +90,6 @@ const AboutSettings: FC = () => {
           </UpdateNotesWrapper>
         </SettingGroup>
       )}
-      {/* <SettingGroup theme={theme}>
-        <SettingRow>
-          <SettingRowTitle>
-            <Rss size={18} />
-            {t('settings.about.releases.title')}
-          </SettingRowTitle>
-          <Button onClick={showReleases}>{t('settings.about.releases.button')}</Button>
-        </SettingRow>
-        <SettingDivider />
-        <SettingRow>
-          <SettingRowTitle>
-            <Globe size={18} />
-            {t('settings.about.website.title')}
-          </SettingRowTitle>
-          <Button onClick={() => onOpenWebsite('https://cherry-ai.com')}>{t('settings.about.website.button')}</Button>
-        </SettingRow>
-        <SettingDivider />
-        <SettingRow>
-          <SettingRowTitle>
-            <Github size={18} />
-            {t('settings.about.feedback.title')}
-          </SettingRowTitle>
-          <Button onClick={() => onOpenWebsite('https://github.com/CherryHQ/cherry-studio/issues/new/choose')}>
-            {t('settings.about.feedback.button')}
-          </Button>
-        </SettingRow>
-        <SettingDivider />
-        <SettingRow>
-          <SettingRowTitle>
-            <FileCheck size={18} />
-            {t('settings.about.license.title')}
-          </SettingRowTitle>
-          <Button onClick={showLicense}>{t('settings.about.license.button')}</Button>
-        </SettingRow>
-        <SettingDivider />
-        <SettingRow>
-          <SettingRowTitle>
-            <Mail size={18} />
-            {t('settings.about.contact.title')}
-          </SettingRowTitle>
-          <Button onClick={mailto}>{t('settings.about.contact.button')}</Button>
-        </SettingRow>
-        <SettingDivider />
-        <SettingRow>
-          <SettingRowTitle>
-            <Bug size={18} />
-            {t('settings.about.debug.title')}
-          </SettingRowTitle>
-          <Button onClick={debug}>{t('settings.about.debug.open')}</Button>
-        </SettingRow>
-      </SettingGroup> */}
     </SettingContainer>
   )
 }
@@ -262,13 +123,6 @@ const Description = styled.div`
   color: var(--color-text-2);
   text-align: center;
 `
-
-// const CheckUpdateButton = styled(Button)`
-//   position: absolute;
-//   right: 0;
-//   top: 50%;
-//   transform: translateY(-50%);
-// `
 
 const AvatarWrapper = styled.div`
   position: relative;

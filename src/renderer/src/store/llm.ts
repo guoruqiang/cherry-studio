@@ -176,16 +176,16 @@ export const INITIAL_PROVIDERS: Provider[] = [
   //   isSystem: true,
   //   enabled: false
   // },
-  {
-    id: 'openai',
-    name: 'OpenAI',
-    type: 'openai-compatible',
-    apiKey: '',
-    apiHost: 'https://api.nwafu-ai.cn',
-    models: SYSTEM_MODELS.openai,
-    isSystem: true,
-    enabled: true
-  }
+  // {
+  //   id: 'openai',
+  //   name: 'OpenAI',
+  //   type: 'openai',
+  //   apiKey: '',
+  //   apiHost: 'https://api.nwafu-ai.cn',
+  //   models: SYSTEM_MODELS.openai,
+  //   isSystem: true,
+  //   enabled: true
+  // }
   // {
   //   id: 'azure-openai',
   //   name: 'Azure OpenAI',
@@ -800,13 +800,23 @@ export const INITIAL_PROVIDERS: Provider[] = [
   //   isSystem: true,
   //   enabled: false
   // }
+  {
+    id: 'openai',
+    name: 'OpenAI',
+    type: 'openai',
+    apiKey: '',
+    apiHost: 'https://api.nwafu-ai.cn',
+    models: SYSTEM_MODELS.openai,
+    isSystem: true,
+    enabled: true
+  }
 ]
 
 const initialState: LlmState = {
   defaultModel: SYSTEM_MODELS.openai[1],
   topicNamingModel: SYSTEM_MODELS.openai[2],
-  translateModel: SYSTEM_MODELS.openai[4],
-  quickAssistantModel: SYSTEM_MODELS.openai[1],
+  translateModel: SYSTEM_MODELS.openai[1],
+  quickAssistantModel: SYSTEM_MODELS.openai[2],
   providers: INITIAL_PROVIDERS,
   settings: {
     ollama: {

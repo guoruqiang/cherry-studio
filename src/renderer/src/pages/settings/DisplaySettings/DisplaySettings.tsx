@@ -12,8 +12,7 @@ import {
   setClickAssistantToShowTopic,
   setCustomCss,
   setPinTopicsToTop,
-  setShowTopicTime,
-  setSidebarIcons
+  setShowTopicTime
 } from '@renderer/store/settings'
 import { ThemeMode } from '@renderer/types'
 import { Button, ColorPicker, Input, Segmented, Switch } from 'antd'
@@ -61,7 +60,6 @@ const DisplaySettings: FC = () => {
     showTopicTime,
     pinTopicsToTop,
     customCss,
-    sidebarIcons,
     setTheme,
     assistantIconType,
     userTheme
@@ -72,9 +70,6 @@ const DisplaySettings: FC = () => {
   const [currentZoom, setCurrentZoom] = useState(1.0)
   const { setUserTheme } = useUserTheme()
 
-  // const [visibleIcons, setVisibleIcons] = useState(sidebarIcons?.visible || DEFAULT_SIDEBAR_ICONS)
-  // const [disabledIcons, setDisabledIcons] = useState(sidebarIcons?.disabled || [])
-
   const handleWindowStyleChange = useCallback(
     (checked: boolean) => {
       setWindowStyle(checked ? 'transparent' : 'opaque')
@@ -82,21 +77,15 @@ const DisplaySettings: FC = () => {
     [setWindowStyle]
   )
 
-  // const handleColorPrimaryChange = useCallback(
-  //   (colorHex: string) => {
-  //     setUserTheme({
-  //       ...userTheme,
-  //       colorPrimary: colorHex
-  //     })
-  //   },
-  //   [setUserTheme, userTheme]
-  // )
-
-  // const handleReset = useCallback(() => {
-  //   setVisibleIcons([...DEFAULT_SIDEBAR_ICONS])
-  //   setDisabledIcons([])
-  //   dispatch(setSidebarIcons({ visible: DEFAULT_SIDEBAR_ICONS, disabled: [] }))
-  // }, [dispatch])
+  const handleColorPrimaryChange = useCallback(
+    (colorHex: string) => {
+      setUserTheme({
+        ...userTheme,
+        colorPrimary: colorHex
+      })
+    },
+    [setUserTheme, userTheme]
+  )
 
   const themeOptions = useMemo(
     () => [
