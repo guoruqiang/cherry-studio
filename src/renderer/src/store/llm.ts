@@ -67,16 +67,6 @@ export const INITIAL_PROVIDERS: Provider[] = [
   //   enabled: false
   // },
   // {
-  //   id: 'openrouter',
-  //   name: 'OpenRouter',
-  //   type: 'openai',
-  //   apiKey: '',
-  //   apiHost: 'https://openrouter.ai/api/v1/',
-  //   models: SYSTEM_MODELS.openrouter,
-  //   isSystem: true,
-  //   enabled: false
-  // },
-  // {
   //   id: 'ppio',
   //   name: 'PPIO',
   //   type: 'openai',
@@ -93,16 +83,6 @@ export const INITIAL_PROVIDERS: Provider[] = [
   //   apiKey: '',
   //   apiHost: 'https://deepseek.alayanew.com',
   //   models: SYSTEM_MODELS.alayanew,
-  //   isSystem: true,
-  //   enabled: false
-  // },
-  // {
-  //   id: 'infini',
-  //   name: 'Infini',
-  //   type: 'openai',
-  //   apiKey: '',
-  //   apiHost: 'https://cloud.infini-ai.com/maas',
-  //   models: SYSTEM_MODELS.infini,
   //   isSystem: true,
   //   enabled: false
   // },
@@ -137,12 +117,32 @@ export const INITIAL_PROVIDERS: Provider[] = [
   //   enabled: false
   // },
   // {
+  //   id: 'tokenflux',
+  //   name: 'TokenFlux',
+  //   type: 'openai',
+  //   apiKey: '',
+  //   apiHost: 'https://tokenflux.ai',
+  //   models: SYSTEM_MODELS.tokenflux,
+  //   isSystem: true,
+  //   enabled: false
+  // },
+  // {
   //   id: 'o3',
   //   name: 'O3',
   //   type: 'openai',
   //   apiKey: '',
   //   apiHost: 'https://api.o3.fan',
   //   models: SYSTEM_MODELS.o3,
+  //   isSystem: true,
+  //   enabled: false
+  // },
+  // {
+  //   id: 'openrouter',
+  //   name: 'OpenRouter',
+  //   type: 'openai',
+  //   apiKey: '',
+  //   apiHost: 'https://openrouter.ai/api/v1/',
+  //   models: SYSTEM_MODELS.openrouter,
   //   isSystem: true,
   //   enabled: false
   // },
@@ -184,8 +184,8 @@ export const INITIAL_PROVIDERS: Provider[] = [
   //   apiHost: 'https://api.nwafu-ai.cn',
   //   models: SYSTEM_MODELS.openai,
   //   isSystem: true,
-  //   enabled: true
-  // }
+  //   enabled: false
+  // },
   // {
   //   id: 'azure-openai',
   //   name: 'Azure OpenAI',
@@ -295,6 +295,16 @@ export const INITIAL_PROVIDERS: Provider[] = [
   //   apiKey: '',
   //   apiHost: 'https://ark.cn-beijing.volces.com/api/v3/',
   //   models: SYSTEM_MODELS.doubao,
+  //   isSystem: true,
+  //   enabled: false
+  // },
+  // {
+  //   id: 'infini',
+  //   name: 'Infini',
+  //   type: 'openai',
+  //   apiKey: '',
+  //   apiHost: 'https://cloud.infini-ai.com/maas',
+  //   models: SYSTEM_MODELS.infini,
   //   isSystem: true,
   //   enabled: false
   // },
@@ -475,328 +485,6 @@ export const INITIAL_PROVIDERS: Provider[] = [
   //   apiKey: '',
   //   apiHost: 'https://api.voyageai.com',
   //   models: SYSTEM_MODELS.voyageai,
-  //   isSystem: true,
-  //   enabled: false
-  // },
-  // {
-  //   id: 'tokenflux',
-  //   name: 'TokenFlux',
-  //   type: 'openai',
-  //   apiKey: '',
-  //   apiHost: 'https://tokenflux.ai',
-  //   models: SYSTEM_MODELS.tokenflux,
-  //   isSystem: true,
-  //   enabled: false
-  // }
-  // {
-  //   id: 'azure-openai',
-  //   name: 'Azure OpenAI',
-  //   type: 'openai-compatible',
-  //   apiKey: '',
-  //   apiHost: '',
-  //   apiVersion: '',
-  //   models: SYSTEM_MODELS['azure-openai'],
-  //   isSystem: true,
-  //   enabled: false
-  // },
-  // {
-  //   id: 'gemini',
-  //   name: 'Gemini',
-  //   type: 'gemini',
-  //   apiKey: '',
-  //   apiHost: 'https://generativelanguage.googleapis.com',
-  //   models: SYSTEM_MODELS.gemini,
-  //   isSystem: true,
-  //   enabled: false
-  // },
-  // {
-  //   id: 'zhipu',
-  //   name: 'ZhiPu',
-  //   type: 'openai-compatible',
-  //   apiKey: '',
-  //   apiHost: 'https://open.bigmodel.cn/api/paas/v4/',
-  //   models: SYSTEM_MODELS.zhipu,
-  //   isSystem: true,
-  //   enabled: false
-  // },
-  // {
-  //   id: 'github',
-  //   name: 'Github Models',
-  //   type: 'openai-compatible',
-  //   apiKey: '',
-  //   apiHost: 'https://models.inference.ai.azure.com/',
-  //   models: SYSTEM_MODELS.github,
-  //   isSystem: true,
-  //   enabled: false
-  // },
-  // {
-  //   id: 'copilot',
-  //   name: 'Github Copilot',
-  //   type: 'openai-compatible',
-  //   apiKey: '',
-  //   apiHost: 'https://api.githubcopilot.com/',
-  //   models: SYSTEM_MODELS.copilot,
-  //   isSystem: true,
-  //   enabled: false,
-  //   isAuthed: false
-  // },
-  // {
-  //   id: 'yi',
-  //   name: 'Yi',
-  //   type: 'openai-compatible',
-  //   apiKey: '',
-  //   apiHost: 'https://api.lingyiwanwu.com',
-  //   models: SYSTEM_MODELS.yi,
-  //   isSystem: true,
-  //   enabled: false
-  // },
-  // {
-  //   id: 'moonshot',
-  //   name: 'Moonshot AI',
-  //   type: 'openai-compatible',
-  //   apiKey: '',
-  //   apiHost: 'https://api.moonshot.cn',
-  //   models: SYSTEM_MODELS.moonshot,
-  //   isSystem: true,
-  //   enabled: false
-  // },
-  // {
-  //   id: 'baichuan',
-  //   name: 'BAICHUAN AI',
-  //   type: 'openai-compatible',
-  //   apiKey: '',
-  //   apiHost: 'https://api.baichuan-ai.com',
-  //   models: SYSTEM_MODELS.baichuan,
-  //   isSystem: true,
-  //   enabled: false
-  // },
-  // {
-  //   id: 'dashscope',
-  //   name: 'Bailian',
-  //   type: 'openai-compatible',
-  //   apiKey: '',
-  //   apiHost: 'https://dashscope.aliyuncs.com/compatible-mode/v1/',
-  //   models: SYSTEM_MODELS.bailian,
-  //   isSystem: true,
-  //   enabled: false
-  // },
-  // {
-  //   id: 'stepfun',
-  //   name: 'StepFun',
-  //   type: 'openai-compatible',
-  //   apiKey: '',
-  //   apiHost: 'https://api.stepfun.com',
-  //   models: SYSTEM_MODELS.stepfun,
-  //   isSystem: true,
-  //   enabled: false
-  // },
-  // {
-  //   id: 'doubao',
-  //   name: 'doubao',
-  //   type: 'openai-compatible',
-  //   apiKey: '',
-  //   apiHost: 'https://ark.cn-beijing.volces.com/api/v3/',
-  //   models: SYSTEM_MODELS.doubao,
-  //   isSystem: true,
-  //   enabled: false
-  // },
-  // {
-  //   id: 'minimax',
-  //   name: 'MiniMax',
-  //   type: 'openai-compatible',
-  //   apiKey: '',
-  //   apiHost: 'https://api.minimax.chat/v1/',
-  //   models: SYSTEM_MODELS.minimax,
-  //   isSystem: true,
-  //   enabled: false
-  // },
-  // {
-  //   id: 'groq',
-  //   name: 'Groq',
-  //   type: 'openai-compatible',
-  //   apiKey: '',
-  //   apiHost: 'https://api.groq.com/openai',
-  //   models: SYSTEM_MODELS.groq,
-  //   isSystem: true,
-  //   enabled: false
-  // },
-  // {
-  //   id: 'together',
-  //   name: 'Together',
-  //   type: 'openai-compatible',
-  //   apiKey: '',
-  //   apiHost: 'https://api.together.xyz',
-  //   models: SYSTEM_MODELS.together,
-  //   isSystem: true,
-  //   enabled: false
-  // },
-  // {
-  //   id: 'fireworks',
-  //   name: 'Fireworks',
-  //   type: 'openai-compatible',
-  //   apiKey: '',
-  //   apiHost: 'https://api.fireworks.ai/inference',
-  //   models: SYSTEM_MODELS.fireworks,
-  //   isSystem: true,
-  //   enabled: false
-  // },
-  // {
-  //   id: 'zhinao',
-  //   name: 'zhinao',
-  //   type: 'openai-compatible',
-  //   apiKey: '',
-  //   apiHost: 'https://api.360.cn',
-  //   models: SYSTEM_MODELS.zhinao,
-  //   isSystem: true,
-  //   enabled: false
-  // },
-  // {
-  //   id: 'hunyuan',
-  //   name: 'hunyuan',
-  //   type: 'openai-compatible',
-  //   apiKey: '',
-  //   apiHost: 'https://api.hunyuan.cloud.tencent.com',
-  //   models: SYSTEM_MODELS.hunyuan,
-  //   isSystem: true,
-  //   enabled: false
-  // },
-  // {
-  //   id: 'nvidia',
-  //   name: 'nvidia',
-  //   type: 'openai-compatible',
-  //   apiKey: '',
-  //   apiHost: 'https://integrate.api.nvidia.com',
-  //   models: SYSTEM_MODELS.nvidia,
-  //   isSystem: true,
-  //   enabled: false
-  // },
-  // {
-  //   id: 'grok',
-  //   name: 'Grok',
-  //   type: 'openai-compatible',
-  //   apiKey: '',
-  //   apiHost: 'https://api.x.ai',
-  //   models: SYSTEM_MODELS.grok,
-  //   isSystem: true,
-  //   enabled: false
-  // },
-  // {
-  //   id: 'hyperbolic',
-  //   name: 'Hyperbolic',
-  //   type: 'openai-compatible',
-  //   apiKey: '',
-  //   apiHost: 'https://api.hyperbolic.xyz',
-  //   models: SYSTEM_MODELS.hyperbolic,
-  //   isSystem: true,
-  //   enabled: false
-  // },
-  // {
-  //   id: 'mistral',
-  //   name: 'Mistral',
-  //   type: 'openai-compatible',
-  //   apiKey: '',
-  //   apiHost: 'https://api.mistral.ai',
-  //   models: SYSTEM_MODELS.mistral,
-  //   isSystem: true,
-  //   enabled: false
-  // },
-  // {
-  //   id: 'jina',
-  //   name: 'Jina',
-  //   type: 'openai-compatible',
-  //   apiKey: '',
-  //   apiHost: 'https://api.jina.ai',
-  //   models: SYSTEM_MODELS.jina,
-  //   isSystem: true,
-  //   enabled: false
-  // },
-  // {
-  //   id: 'gitee-ai',
-  //   name: 'gitee ai',
-  //   type: 'openai-compatible',
-  //   apiKey: '',
-  //   apiHost: 'https://ai.gitee.com',
-  //   models: SYSTEM_MODELS['gitee-ai'],
-  //   isSystem: true,
-  //   enabled: false
-  // },
-  // {
-  //   id: 'perplexity',
-  //   name: 'Perplexity',
-  //   type: 'openai-compatible',
-  //   apiKey: '',
-  //   apiHost: 'https://api.perplexity.ai/',
-  //   models: SYSTEM_MODELS.perplexity,
-  //   isSystem: true,
-  //   enabled: false
-  // },
-  // {
-  //   id: 'modelscope',
-  //   name: 'ModelScope',
-  //   type: 'openai-compatible',
-  //   apiKey: '',
-  //   apiHost: 'https://api-inference.modelscope.cn/v1/',
-  //   models: SYSTEM_MODELS.modelscope,
-  //   isSystem: true,
-  //   enabled: false
-  // },
-  // {
-  //   id: 'xirang',
-  //   name: 'Xirang',
-  //   type: 'openai-compatible',
-  //   apiKey: '',
-  //   apiHost: 'https://wishub-x1.ctyun.cn',
-  //   models: SYSTEM_MODELS.xirang,
-  //   isSystem: true,
-  //   enabled: false
-  // },
-  // {
-  //   id: 'tencent-cloud-ti',
-  //   name: 'Tencent Cloud TI',
-  //   type: 'openai-compatible',
-  //   apiKey: '',
-  //   apiHost: 'https://api.lkeap.cloud.tencent.com',
-  //   models: SYSTEM_MODELS['tencent-cloud-ti'],
-  //   isSystem: true,
-  //   enabled: false
-  // },
-  // {
-  //   id: 'baidu-cloud',
-  //   name: 'Baidu Cloud',
-  //   type: 'openai-compatible',
-  //   apiKey: '',
-  //   apiHost: 'https://qianfan.baidubce.com/v2/',
-  //   models: SYSTEM_MODELS['baidu-cloud'],
-  //   isSystem: true,
-  //   enabled: false
-  // },
-  // {
-  //   id: 'gpustack',
-  //   name: 'GPUStack',
-  //   type: 'openai-compatible',
-  //   apiKey: '',
-  //   apiHost: '',
-  //   models: SYSTEM_MODELS.gpustack,
-  //   isSystem: true,
-  //   enabled: false
-  // },
-  // {
-  //   id: 'voyageai',
-  //   name: 'VoyageAI',
-  //   type: 'openai-compatible',
-  //   apiKey: '',
-  //   apiHost: 'https://api.voyageai.com',
-  //   models: SYSTEM_MODELS.voyageai,
-  //   isSystem: true,
-  //   enabled: false
-  // },
-  // {
-  //   id: 'paratera',
-  //   name: 'Paratera AI',
-  //   type: 'openai-compatible',
-  //   apiKey: '',
-  //   apiHost: 'https://llmapi.paratera.com',
-  //   models: SYSTEM_MODELS.paratera,
   //   isSystem: true,
   //   enabled: false
   // }

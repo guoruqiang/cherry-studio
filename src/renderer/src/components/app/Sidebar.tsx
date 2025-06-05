@@ -9,6 +9,7 @@ import { useMinapps } from '@renderer/hooks/useMinapps'
 import useNavBackgroundColor from '@renderer/hooks/useNavBackgroundColor'
 import { modelGenerating, useRuntime } from '@renderer/hooks/useRuntime'
 import { useSettings } from '@renderer/hooks/useSettings'
+import i18n from '@renderer/i18n'
 import { ThemeMode } from '@renderer/types'
 import { isEmoji } from '@renderer/utils'
 import type { MenuProps } from 'antd'
@@ -18,7 +19,8 @@ import {
   FileSearch,
   Folder,
   Languages,
-  MessageSquareQuote,
+  LayoutGrid,
+  MessageSquare,
   Moon,
   Settings,
   Sparkle,
@@ -33,7 +35,6 @@ import styled from 'styled-components'
 import DragableList from '../DragableList'
 import MinAppIcon from '../Icons/MinAppIcon'
 import UserPopup from '../Popups/UserPopup'
-import i18n from '@renderer/i18n'
 
 const Sidebar: FC = () => {
   const { hideMinappPopup, openMinapp } = useMinappPopup()
@@ -148,7 +149,7 @@ const MainMenus: FC = () => {
   const isRoutes = (path: string): string => (pathname.startsWith(path) && !minappShow ? 'active' : '')
 
   const iconMap = {
-    assistants: <MessageSquareQuote size={18} className="icon" />,
+    assistants: <MessageSquare size={18} className="icon" />,
     agents: <Sparkle size={18} className="icon" />,
     translate: <Languages size={18} className="icon" />,
     knowledge: <FileSearch size={18} className="icon" />,
