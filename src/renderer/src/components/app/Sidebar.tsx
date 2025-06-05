@@ -19,7 +19,6 @@ import {
   FileSearch,
   Folder,
   Languages,
-  LayoutGrid,
   MessageSquare,
   Moon,
   Settings,
@@ -65,9 +64,7 @@ const Sidebar: FC = () => {
     openMinapp({
       id: docsId,
       name: t('docs.title'),
-      url: isChinese
-        ? 'https://help.nwafu-ai.cn/'
-        : 'https://help.nwafu-ai.cn/',
+      url: isChinese ? 'https://help.nwafu-ai.cn/' : 'https://help.nwafu-ai.cn/',
       logo: AppLogo
     })
   }
