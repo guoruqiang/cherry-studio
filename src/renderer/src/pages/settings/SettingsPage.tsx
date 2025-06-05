@@ -12,6 +12,7 @@ import {
   Rocket,
   Settings2,
   SquareTerminal,
+  TextCursorInput,
   Zap
 } from 'lucide-react'
 // 导入useAppSelector
@@ -30,6 +31,7 @@ import MiniAppSettings from './MiniappSettings/MiniAppSettings'
 import ProvidersList from './ProviderSettings'
 import QuickAssistantSettings from './QuickAssistantSettings'
 import QuickPhraseSettings from './QuickPhraseSettings'
+import SelectionAssistantSettings from './SelectionAssistantSettings/SelectionAssistantSettings'
 import ShortcutSettings from './ShortcutSettings'
 import WebSearchSettings from './WebSearchSettings'
 
@@ -105,6 +107,12 @@ const SettingsPage: FC = () => {
               {t('settings.quickAssistant.title')}
             </MenuItem>
           </MenuItemLink>
+          <MenuItemLink to="/settings/selectionAssistant">
+            <MenuItem className={isRoute('/settings/selectionAssistant')}>
+              <TextCursorInput size={18} />
+              {t('selection.name')}
+            </MenuItem>
+          </MenuItemLink>
           <MenuItemLink to="/settings/quickPhrase">
             <MenuItem className={isRoute('/settings/quickPhrase')}>
               <Zap size={18} />
@@ -135,6 +143,7 @@ const SettingsPage: FC = () => {
             {showMiniAppSettings && <Route path="miniapps" element={<MiniAppSettings />} />}
             <Route path="shortcut" element={<ShortcutSettings />} />
             <Route path="quickAssistant" element={<QuickAssistantSettings />} />
+            <Route path="selectionAssistant" element={<SelectionAssistantSettings />} />
             <Route path="data" element={<DataSettings />} />
             <Route path="about" element={<AboutSettings />} />
             <Route path="quickPhrase" element={<QuickPhraseSettings />} />

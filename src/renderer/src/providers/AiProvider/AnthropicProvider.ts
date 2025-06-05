@@ -13,7 +13,7 @@ import {
   WebSearchToolResultError
 } from '@anthropic-ai/sdk/resources'
 import { DEFAULT_MAX_TOKENS } from '@renderer/config/constant'
-import { isReasoningModel, isWebSearchModel } from '@renderer/config/models'
+import { findTokenLimit, isClaudeReasoningModel, isReasoningModel, isWebSearchModel } from '@renderer/config/models'
 import { getStoreSetting } from '@renderer/hooks/useSettings'
 import i18n from '@renderer/i18n'
 import { getAssistantSettings, getDefaultModel, getTopNamingModel } from '@renderer/services/AssistantService'
@@ -43,6 +43,7 @@ import type { Message } from '@renderer/types/newMessage'
 import { removeSpecialCharactersForTopicName } from '@renderer/utils'
 import {
   anthropicToolUseToMcpTool,
+  isEnabledToolUse,
   mcpToolCallResponseToAnthropicMessage,
   mcpToolsToAnthropicTools,
   parseAndCallTools
@@ -152,24 +153,18 @@ export default class AnthropicProvider extends BaseProvider {
     } as WebSearchTool20250305
   }
 
-  /**
-   * Get the temperature
-   * @param assistant - The assistant
-   * @param model - The model
-   * @returns The temperature
-   */
-  private getTemperature(assistant: Assistant, model: Model) {
-    return isReasoningModel(model) ? undefined : assistant?.settings?.temperature
+  override getTemperature(assistant: Assistant, model: Model): number | undefined {
+    if (assistant.settings?.reasoning_effort && isClaudeReasoningModel(model)) {
+      return undefined
+    }
+    return assistant.settings?.temperature
   }
 
-  /**
-   * Get the top P
-   * @param assistant - The assistant
-   * @param model - The model
-   * @returns The top P
-   */
-  private getTopP(assistant: Assistant, model: Model) {
-    return isReasoningModel(model) ? undefined : assistant?.settings?.topP
+  override getTopP(assistant: Assistant, model: Model): number | undefined {
+    if (assistant.settings?.reasoning_effort && isClaudeReasoningModel(model)) {
+      return undefined
+    }
+    return assistant.settings?.topP
   }
 
   /**
@@ -194,7 +189,16 @@ export default class AnthropicProvider extends BaseProvider {
 
     const effortRatio = EFFORT_RATIO[reasoningEffort]
 
-    const budgetTokens = Math.floor((maxTokens || DEFAULT_MAX_TOKENS) * effortRatio * 0.8)
+    const budgetTokens = Math.max(
+      1024,
+      Math.floor(
+        Math.min(
+          (findTokenLimit(model.id)?.max! - findTokenLimit(model.id)?.min!) * effortRatio +
+            findTokenLimit(model.id)?.min!,
+          (maxTokens || DEFAULT_MAX_TOKENS) * effortRatio
+        )
+      )
+    )
 
     return {
       type: 'enabled',
@@ -213,7 +217,7 @@ export default class AnthropicProvider extends BaseProvider {
   public async completions({ messages, assistant, mcpTools, onChunk, onFilterMessages }: CompletionsParams) {
     const defaultModel = getDefaultModel()
     const model = assistant.model || defaultModel
-    const { contextCount, maxTokens, streamOutput, enableToolUse } = getAssistantSettings(assistant)
+    const { contextCount, maxTokens, streamOutput } = getAssistantSettings(assistant)
 
     const userMessagesParams: MessageParam[] = []
 
@@ -235,11 +239,11 @@ export default class AnthropicProvider extends BaseProvider {
     const { tools } = this.setupToolsConfig<ToolUnion>({
       model,
       mcpTools,
-      enableToolUse
+      enableToolUse: isEnabledToolUse(assistant)
     })
 
     if (this.useSystemPromptForTools && mcpTools && mcpTools.length) {
-      systemPrompt = buildSystemPrompt(systemPrompt, mcpTools)
+      systemPrompt = await buildSystemPrompt(systemPrompt, mcpTools)
     }
 
     let systemMessage: TextBlockParam | undefined = undefined
@@ -250,7 +254,7 @@ export default class AnthropicProvider extends BaseProvider {
       }
     }
 
-    const isEnabledBuiltinWebSearch = assistant.enableWebSearch
+    const isEnabledBuiltinWebSearch = assistant.enableWebSearch && isWebSearchModel(model)
 
     if (isEnabledBuiltinWebSearch) {
       const webSearchTool = await this.getWebSearchParams(model)
@@ -290,7 +294,6 @@ export default class AnthropicProvider extends BaseProvider {
 
     const processStream = async (body: MessageCreateParamsNonStreaming, idx: number) => {
       let time_first_token_millsec = 0
-      const start_time_millsec = new Date().getTime()
 
       if (!streamOutput) {
         const message = await this.sdk.messages.create({ ...body, stream: false })
@@ -319,7 +322,7 @@ export default class AnthropicProvider extends BaseProvider {
             reasoning_content,
             usage: message.usage as any,
             metrics: {
-              completion_tokens: message.usage.output_tokens,
+              completion_tokens: message.usage?.output_tokens || 0,
               time_completion_millsec,
               time_first_token_millsec: 0
             }
@@ -442,6 +445,14 @@ export default class AnthropicProvider extends BaseProvider {
               )
             }
 
+            if (thinking_content) {
+              onChunk({
+                type: ChunkType.THINKING_COMPLETE,
+                text: thinking_content,
+                thinking_millsec: new Date().getTime() - time_first_token_millsec
+              })
+            }
+
             userMessages.push({
               role: message.role,
               content: message.content
@@ -461,18 +472,31 @@ export default class AnthropicProvider extends BaseProvider {
               }
             }
 
-            finalUsage.prompt_tokens += message.usage.input_tokens
-            finalUsage.completion_tokens += message.usage.output_tokens
-            finalUsage.total_tokens += finalUsage.prompt_tokens + finalUsage.completion_tokens
-            finalMetrics.completion_tokens = finalUsage.completion_tokens
-            finalMetrics.time_completion_millsec += new Date().getTime() - start_time_millsec
-            finalMetrics.time_first_token_millsec = time_first_token_millsec - start_time_millsec
+            // 直接修改finalUsage对象会报错，TypeError: Cannot assign to read only property 'prompt_tokens' of object '#<Object>'
+            // 暂未找到原因
+            const updatedUsage: Usage = {
+              ...finalUsage,
+              prompt_tokens: finalUsage.prompt_tokens + (message.usage?.input_tokens || 0),
+              completion_tokens: finalUsage.completion_tokens + (message.usage?.output_tokens || 0)
+            }
+            updatedUsage.total_tokens = updatedUsage.prompt_tokens + updatedUsage.completion_tokens
+
+            const updatedMetrics: Metrics = {
+              ...finalMetrics,
+              completion_tokens: updatedUsage.completion_tokens,
+              time_completion_millsec:
+                finalMetrics.time_completion_millsec + (new Date().getTime() - start_time_millsec),
+              time_first_token_millsec: time_first_token_millsec - start_time_millsec
+            }
+
+            Object.assign(finalUsage, updatedUsage)
+            Object.assign(finalMetrics, updatedMetrics)
 
             onChunk({
               type: ChunkType.BLOCK_COMPLETE,
               response: {
-                usage: finalUsage,
-                metrics: finalMetrics
+                usage: updatedUsage,
+                metrics: updatedMetrics
               }
             })
             resolve()
@@ -484,7 +508,10 @@ export default class AnthropicProvider extends BaseProvider {
       })
     }
     onChunk({ type: ChunkType.LLM_RESPONSE_CREATED })
-    await processStream(body, 0).finally(cleanup)
+    const start_time_millsec = new Date().getTime()
+    await processStream(body, 0).finally(() => {
+      cleanup()
+    })
   }
 
   /**
@@ -678,7 +705,7 @@ export default class AnthropicProvider extends BaseProvider {
     const body = {
       model: model.id,
       messages: [{ role: 'user' as const, content: 'hi' }],
-      max_tokens: 100,
+      max_tokens: 2, // api文档写的 x>1
       stream
     }
 

@@ -21,6 +21,7 @@ export interface LlmState {
   defaultModel: Model
   topicNamingModel: Model
   translateModel: Model
+  quickAssistantModel: Model
   settings: LlmSettings
 }
 
@@ -28,7 +29,7 @@ export const INITIAL_PROVIDERS: Provider[] = [
   // {
   //   id: 'silicon',
   //   name: 'Silicon',
-  //   type: 'openai-compatible',
+  //   type: 'openai',
   //   apiKey: '',
   //   apiHost: 'https://api.siliconflow.cn',
   //   models: SYSTEM_MODELS.silicon,
@@ -38,7 +39,7 @@ export const INITIAL_PROVIDERS: Provider[] = [
   // {
   //   id: 'aihubmix',
   //   name: 'AiHubMix',
-  //   type: 'openai-compatible',
+  //   type: 'openai',
   //   apiKey: '',
   //   apiHost: 'https://aihubmix.com',
   //   models: SYSTEM_MODELS.aihubmix,
@@ -48,7 +49,7 @@ export const INITIAL_PROVIDERS: Provider[] = [
   // {
   //   id: 'ocoolai',
   //   name: 'ocoolAI',
-  //   type: 'openai-compatible',
+  //   type: 'openai',
   //   apiKey: '',
   //   apiHost: 'https://api.ocoolai.com',
   //   models: SYSTEM_MODELS.ocoolai,
@@ -58,7 +59,7 @@ export const INITIAL_PROVIDERS: Provider[] = [
   // {
   //   id: 'deepseek',
   //   name: 'deepseek',
-  //   type: 'openai-compatible',
+  //   type: 'openai',
   //   apiKey: '',
   //   apiHost: 'https://api.deepseek.com',
   //   models: SYSTEM_MODELS.deepseek,
@@ -68,7 +69,7 @@ export const INITIAL_PROVIDERS: Provider[] = [
   // {
   //   id: 'openrouter',
   //   name: 'OpenRouter',
-  //   type: 'openai-compatible',
+  //   type: 'openai',
   //   apiKey: '',
   //   apiHost: 'https://openrouter.ai/api/v1/',
   //   models: SYSTEM_MODELS.openrouter,
@@ -78,7 +79,7 @@ export const INITIAL_PROVIDERS: Provider[] = [
   // {
   //   id: 'ppio',
   //   name: 'PPIO',
-  //   type: 'openai-compatible',
+  //   type: 'openai',
   //   apiKey: '',
   //   apiHost: 'https://api.ppinfra.com/v3/openai',
   //   models: SYSTEM_MODELS.ppio,
@@ -88,7 +89,7 @@ export const INITIAL_PROVIDERS: Provider[] = [
   // {
   //   id: 'alayanew',
   //   name: 'AlayaNew',
-  //   type: 'openai-compatible',
+  //   type: 'openai',
   //   apiKey: '',
   //   apiHost: 'https://deepseek.alayanew.com',
   //   models: SYSTEM_MODELS.alayanew,
@@ -98,7 +99,7 @@ export const INITIAL_PROVIDERS: Provider[] = [
   // {
   //   id: 'infini',
   //   name: 'Infini',
-  //   type: 'openai-compatible',
+  //   type: 'openai',
   //   apiKey: '',
   //   apiHost: 'https://cloud.infini-ai.com/maas',
   //   models: SYSTEM_MODELS.infini,
@@ -108,7 +109,7 @@ export const INITIAL_PROVIDERS: Provider[] = [
   // {
   //   id: 'qiniu',
   //   name: 'Qiniu',
-  //   type: 'openai-compatible',
+  //   type: 'openai',
   //   apiKey: '',
   //   apiHost: 'https://api.qnaigc.com',
   //   models: SYSTEM_MODELS.qiniu,
@@ -118,7 +119,7 @@ export const INITIAL_PROVIDERS: Provider[] = [
   // {
   //   id: 'dmxapi',
   //   name: 'DMXAPI',
-  //   type: 'openai-compatible',
+  //   type: 'openai',
   //   apiKey: '',
   //   apiHost: 'https://www.dmxapi.cn',
   //   models: SYSTEM_MODELS.dmxapi,
@@ -126,9 +127,19 @@ export const INITIAL_PROVIDERS: Provider[] = [
   //   enabled: false
   // },
   // {
+  //   id: 'burncloud',
+  //   name: 'BurnCloud',
+  //   type: 'openai',
+  //   apiKey: '',
+  //   apiHost: 'https://ai.burncloud.com',
+  //   models: SYSTEM_MODELS.burncloud,
+  //   isSystem: true,
+  //   enabled: false
+  // },
+  // {
   //   id: 'o3',
   //   name: 'O3',
-  //   type: 'openai-compatible',
+  //   type: 'openai',
   //   apiKey: '',
   //   apiHost: 'https://api.o3.fan',
   //   models: SYSTEM_MODELS.o3,
@@ -138,7 +149,7 @@ export const INITIAL_PROVIDERS: Provider[] = [
   // {
   //   id: 'ollama',
   //   name: 'Ollama',
-  //   type: 'openai-compatible',
+  //   type: 'openai',
   //   apiKey: '',
   //   apiHost: 'http://localhost:11434',
   //   models: SYSTEM_MODELS.ollama,
@@ -148,7 +159,7 @@ export const INITIAL_PROVIDERS: Provider[] = [
   // {
   //   id: 'lmstudio',
   //   name: 'LM Studio',
-  //   type: 'openai-compatible',
+  //   type: 'openai',
   //   apiKey: '',
   //   apiHost: 'http://localhost:1234',
   //   models: SYSTEM_MODELS.lmstudio,
@@ -167,7 +178,7 @@ export const INITIAL_PROVIDERS: Provider[] = [
   // },
   {
     id: 'openai',
-    name: 'Nwafuer GPT',
+    name: 'OpenAI',
     type: 'openai-compatible',
     apiKey: '',
     apiHost: 'https://api.nwafu-ai.cn',
@@ -175,6 +186,308 @@ export const INITIAL_PROVIDERS: Provider[] = [
     isSystem: true,
     enabled: true
   }
+  // {
+  //   id: 'azure-openai',
+  //   name: 'Azure OpenAI',
+  //   type: 'openai',
+  //   apiKey: '',
+  //   apiHost: '',
+  //   apiVersion: '',
+  //   models: SYSTEM_MODELS['azure-openai'],
+  //   isSystem: true,
+  //   enabled: false
+  // },
+  // {
+  //   id: 'gemini',
+  //   name: 'Gemini',
+  //   type: 'gemini',
+  //   apiKey: '',
+  //   apiHost: 'https://generativelanguage.googleapis.com',
+  //   models: SYSTEM_MODELS.gemini,
+  //   isSystem: true,
+  //   enabled: false
+  // },
+  // {
+  //   id: 'zhipu',
+  //   name: 'ZhiPu',
+  //   type: 'openai',
+  //   apiKey: '',
+  //   apiHost: 'https://open.bigmodel.cn/api/paas/v4/',
+  //   models: SYSTEM_MODELS.zhipu,
+  //   isSystem: true,
+  //   enabled: false
+  // },
+  // {
+  //   id: 'github',
+  //   name: 'Github Models',
+  //   type: 'openai',
+  //   apiKey: '',
+  //   apiHost: 'https://models.inference.ai.azure.com/',
+  //   models: SYSTEM_MODELS.github,
+  //   isSystem: true,
+  //   enabled: false
+  // },
+  // {
+  //   id: 'copilot',
+  //   name: 'Github Copilot',
+  //   type: 'openai',
+  //   apiKey: '',
+  //   apiHost: 'https://api.githubcopilot.com/',
+  //   models: SYSTEM_MODELS.copilot,
+  //   isSystem: true,
+  //   enabled: false,
+  //   isAuthed: false
+  // },
+  // {
+  //   id: 'yi',
+  //   name: 'Yi',
+  //   type: 'openai',
+  //   apiKey: '',
+  //   apiHost: 'https://api.lingyiwanwu.com',
+  //   models: SYSTEM_MODELS.yi,
+  //   isSystem: true,
+  //   enabled: false
+  // },
+  // {
+  //   id: 'moonshot',
+  //   name: 'Moonshot AI',
+  //   type: 'openai',
+  //   apiKey: '',
+  //   apiHost: 'https://api.moonshot.cn',
+  //   models: SYSTEM_MODELS.moonshot,
+  //   isSystem: true,
+  //   enabled: false
+  // },
+  // {
+  //   id: 'baichuan',
+  //   name: 'BAICHUAN AI',
+  //   type: 'openai',
+  //   apiKey: '',
+  //   apiHost: 'https://api.baichuan-ai.com',
+  //   models: SYSTEM_MODELS.baichuan,
+  //   isSystem: true,
+  //   enabled: false
+  // },
+  // {
+  //   id: 'dashscope',
+  //   name: 'Bailian',
+  //   type: 'openai',
+  //   apiKey: '',
+  //   apiHost: 'https://dashscope.aliyuncs.com/compatible-mode/v1/',
+  //   models: SYSTEM_MODELS.bailian,
+  //   isSystem: true,
+  //   enabled: false
+  // },
+  // {
+  //   id: 'stepfun',
+  //   name: 'StepFun',
+  //   type: 'openai',
+  //   apiKey: '',
+  //   apiHost: 'https://api.stepfun.com',
+  //   models: SYSTEM_MODELS.stepfun,
+  //   isSystem: true,
+  //   enabled: false
+  // },
+  // {
+  //   id: 'doubao',
+  //   name: 'doubao',
+  //   type: 'openai',
+  //   apiKey: '',
+  //   apiHost: 'https://ark.cn-beijing.volces.com/api/v3/',
+  //   models: SYSTEM_MODELS.doubao,
+  //   isSystem: true,
+  //   enabled: false
+  // },
+  // {
+  //   id: 'minimax',
+  //   name: 'MiniMax',
+  //   type: 'openai',
+  //   apiKey: '',
+  //   apiHost: 'https://api.minimax.chat/v1/',
+  //   models: SYSTEM_MODELS.minimax,
+  //   isSystem: true,
+  //   enabled: false
+  // },
+  // {
+  //   id: 'groq',
+  //   name: 'Groq',
+  //   type: 'openai',
+  //   apiKey: '',
+  //   apiHost: 'https://api.groq.com/openai',
+  //   models: SYSTEM_MODELS.groq,
+  //   isSystem: true,
+  //   enabled: false
+  // },
+  // {
+  //   id: 'together',
+  //   name: 'Together',
+  //   type: 'openai',
+  //   apiKey: '',
+  //   apiHost: 'https://api.together.xyz',
+  //   models: SYSTEM_MODELS.together,
+  //   isSystem: true,
+  //   enabled: false
+  // },
+  // {
+  //   id: 'fireworks',
+  //   name: 'Fireworks',
+  //   type: 'openai',
+  //   apiKey: '',
+  //   apiHost: 'https://api.fireworks.ai/inference',
+  //   models: SYSTEM_MODELS.fireworks,
+  //   isSystem: true,
+  //   enabled: false
+  // },
+  // {
+  //   id: 'zhinao',
+  //   name: 'zhinao',
+  //   type: 'openai',
+  //   apiKey: '',
+  //   apiHost: 'https://api.360.cn',
+  //   models: SYSTEM_MODELS.zhinao,
+  //   isSystem: true,
+  //   enabled: false
+  // },
+  // {
+  //   id: 'hunyuan',
+  //   name: 'hunyuan',
+  //   type: 'openai',
+  //   apiKey: '',
+  //   apiHost: 'https://api.hunyuan.cloud.tencent.com',
+  //   models: SYSTEM_MODELS.hunyuan,
+  //   isSystem: true,
+  //   enabled: false
+  // },
+  // {
+  //   id: 'nvidia',
+  //   name: 'nvidia',
+  //   type: 'openai',
+  //   apiKey: '',
+  //   apiHost: 'https://integrate.api.nvidia.com',
+  //   models: SYSTEM_MODELS.nvidia,
+  //   isSystem: true,
+  //   enabled: false
+  // },
+  // {
+  //   id: 'grok',
+  //   name: 'Grok',
+  //   type: 'openai',
+  //   apiKey: '',
+  //   apiHost: 'https://api.x.ai',
+  //   models: SYSTEM_MODELS.grok,
+  //   isSystem: true,
+  //   enabled: false
+  // },
+  // {
+  //   id: 'hyperbolic',
+  //   name: 'Hyperbolic',
+  //   type: 'openai',
+  //   apiKey: '',
+  //   apiHost: 'https://api.hyperbolic.xyz',
+  //   models: SYSTEM_MODELS.hyperbolic,
+  //   isSystem: true,
+  //   enabled: false
+  // },
+  // {
+  //   id: 'mistral',
+  //   name: 'Mistral',
+  //   type: 'openai',
+  //   apiKey: '',
+  //   apiHost: 'https://api.mistral.ai',
+  //   models: SYSTEM_MODELS.mistral,
+  //   isSystem: true,
+  //   enabled: false
+  // },
+  // {
+  //   id: 'jina',
+  //   name: 'Jina',
+  //   type: 'openai',
+  //   apiKey: '',
+  //   apiHost: 'https://api.jina.ai',
+  //   models: SYSTEM_MODELS.jina,
+  //   isSystem: true,
+  //   enabled: false
+  // },
+  // {
+  //   id: 'perplexity',
+  //   name: 'Perplexity',
+  //   type: 'openai',
+  //   apiKey: '',
+  //   apiHost: 'https://api.perplexity.ai/',
+  //   models: SYSTEM_MODELS.perplexity,
+  //   isSystem: true,
+  //   enabled: false
+  // },
+  // {
+  //   id: 'modelscope',
+  //   name: 'ModelScope',
+  //   type: 'openai',
+  //   apiKey: '',
+  //   apiHost: 'https://api-inference.modelscope.cn/v1/',
+  //   models: SYSTEM_MODELS.modelscope,
+  //   isSystem: true,
+  //   enabled: false
+  // },
+  // {
+  //   id: 'xirang',
+  //   name: 'Xirang',
+  //   type: 'openai',
+  //   apiKey: '',
+  //   apiHost: 'https://wishub-x1.ctyun.cn',
+  //   models: SYSTEM_MODELS.xirang,
+  //   isSystem: true,
+  //   enabled: false
+  // },
+  // {
+  //   id: 'tencent-cloud-ti',
+  //   name: 'Tencent Cloud TI',
+  //   type: 'openai',
+  //   apiKey: '',
+  //   apiHost: 'https://api.lkeap.cloud.tencent.com',
+  //   models: SYSTEM_MODELS['tencent-cloud-ti'],
+  //   isSystem: true,
+  //   enabled: false
+  // },
+  // {
+  //   id: 'baidu-cloud',
+  //   name: 'Baidu Cloud',
+  //   type: 'openai',
+  //   apiKey: '',
+  //   apiHost: 'https://qianfan.baidubce.com/v2/',
+  //   models: SYSTEM_MODELS['baidu-cloud'],
+  //   isSystem: true,
+  //   enabled: false
+  // },
+  // {
+  //   id: 'gpustack',
+  //   name: 'GPUStack',
+  //   type: 'openai',
+  //   apiKey: '',
+  //   apiHost: '',
+  //   models: SYSTEM_MODELS.gpustack,
+  //   isSystem: true,
+  //   enabled: false
+  // },
+  // {
+  //   id: 'voyageai',
+  //   name: 'VoyageAI',
+  //   type: 'openai',
+  //   apiKey: '',
+  //   apiHost: 'https://api.voyageai.com',
+  //   models: SYSTEM_MODELS.voyageai,
+  //   isSystem: true,
+  //   enabled: false
+  // },
+  // {
+  //   id: 'tokenflux',
+  //   name: 'TokenFlux',
+  //   type: 'openai',
+  //   apiKey: '',
+  //   apiHost: 'https://tokenflux.ai',
+  //   models: SYSTEM_MODELS.tokenflux,
+  //   isSystem: true,
+  //   enabled: false
+  // }
   // {
   //   id: 'azure-openai',
   //   name: 'Azure OpenAI',
@@ -493,6 +806,7 @@ const initialState: LlmState = {
   defaultModel: SYSTEM_MODELS.openai[1],
   topicNamingModel: SYSTEM_MODELS.openai[2],
   translateModel: SYSTEM_MODELS.openai[4],
+  quickAssistantModel: SYSTEM_MODELS.openai[1],
   providers: INITIAL_PROVIDERS,
   settings: {
     ollama: {
@@ -599,6 +913,9 @@ const llmSlice = createSlice({
     setTranslateModel: (state, action: PayloadAction<{ model: Model }>) => {
       state.translateModel = action.payload.model
     },
+    setQuickAssistantModel: (state, action: PayloadAction<{ model: Model }>) => {
+      state.quickAssistantModel = action.payload.model
+    },
     setOllamaKeepAliveTime: (state, action: PayloadAction<number>) => {
       state.settings.ollama.keepAliveTime = action.payload
     },
@@ -636,6 +953,7 @@ export const {
   setDefaultModel,
   setTopicNamingModel,
   setTranslateModel,
+  setQuickAssistantModel,
   setOllamaKeepAliveTime,
   setLMStudioKeepAliveTime,
   setGPUStackKeepAliveTime,

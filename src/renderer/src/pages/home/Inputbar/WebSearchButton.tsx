@@ -6,7 +6,7 @@ import WebSearchService from '@renderer/services/WebSearchService'
 import { Assistant, WebSearchProvider } from '@renderer/types'
 import { hasObjectKey } from '@renderer/utils'
 import { Tooltip } from 'antd'
-import { Globe, Settings } from 'lucide-react'
+import { CircleX, Globe, Settings } from 'lucide-react'
 import { FC, memo, useCallback, useImperativeHandle, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
@@ -50,39 +50,44 @@ const WebSearchButton: FC<Props> = ({ ref, assistant, ToolbarButton }) => {
   const providerItems = useMemo<QuickPanelListItem[]>(() => {
     const isWebSearchModelEnabled = assistant.model && isWebSearchModel(assistant.model)
 
-    const items: QuickPanelListItem[] = providers.map((p) => ({
-      label: p.name,
-      description: WebSearchService.isWebSearchEnabled(p.id)
-        ? hasObjectKey(p, 'apiKey')
-          ? t('settings.websearch.apikey')
-          : t('settings.websearch.free')
-        : t('chat.input.web_search.enable_content'),
-      icon: <Globe />,
-      isSelected: p.id === assistant?.webSearchProviderId,
-      disabled: !WebSearchService.isWebSearchEnabled(p.id),
-      action: () => updateSelectedWebSearchProvider(p.id)
-    }))
+    const items: QuickPanelListItem[] = providers
+      .map((p) => ({
+        label: p.name,
+        description: WebSearchService.isWebSearchEnabled(p.id)
+          ? hasObjectKey(p, 'apiKey')
+            ? t('settings.websearch.apikey')
+            : t('settings.websearch.free')
+          : t('chat.input.web_search.enable_content'),
+        icon: <Globe />,
+        isSelected: p.id === assistant?.webSearchProviderId,
+        disabled: !WebSearchService.isWebSearchEnabled(p.id),
+        action: () => updateSelectedWebSearchProvider(p.id)
+      }))
+      .filter((o) => !o.disabled)
 
-    items.unshift({
-      label: t('chat.input.web_search.builtin'),
-      description: isWebSearchModelEnabled
-        ? t('chat.input.web_search.builtin.enabled_content')
-        : t('chat.input.web_search.builtin.disabled_content'),
-      icon: <Globe />,
-      isSelected: assistant.enableWebSearch,
-      disabled: !isWebSearchModelEnabled,
-      action: () => updateSelectedWebSearchBuiltin()
-    })
+    if (isWebSearchModelEnabled) {
+      items.unshift({
+        label: t('chat.input.web_search.builtin'),
+        description: isWebSearchModelEnabled
+          ? t('chat.input.web_search.builtin.enabled_content')
+          : t('chat.input.web_search.builtin.disabled_content'),
+        icon: <Globe />,
+        isSelected: assistant.enableWebSearch,
+        disabled: !isWebSearchModelEnabled,
+        action: () => updateSelectedWebSearchBuiltin()
+      })
+    }
+
     items.push({
-      label: '前往设置' + '...',
+      label: t('chat.input.web_search.settings'),
       icon: <Settings />,
       action: () => navigate('/settings/web-search')
     })
 
     items.unshift({
-      label: t('chat.input.web_search.no_web_search'),
+      label: t('common.close'),
       description: t('chat.input.web_search.no_web_search.description'),
-      icon: <Globe />,
+      icon: <CircleX />,
       isSelected: !assistant.enableWebSearch && !assistant.webSearchProviderId,
       action: () => {
         updateSelectedWebSearchProvider(undefined)
@@ -105,7 +110,8 @@ const WebSearchButton: FC<Props> = ({ ref, assistant, ToolbarButton }) => {
     quickPanel.open({
       title: t('chat.input.web_search'),
       list: providerItems,
-      symbol: '?'
+      symbol: '?',
+      pageSize: 9
     })
   }, [quickPanel, providerItems, t])
 
