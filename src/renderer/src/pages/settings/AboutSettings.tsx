@@ -4,8 +4,13 @@ import { HStack } from '@renderer/components/Layout'
 import { APP_NAME, AppLogo } from '@renderer/config/env'
 import { useTheme } from '@renderer/context/ThemeProvider'
 import { useRuntime } from '@renderer/hooks/useRuntime'
-import { compareVersions, runAsyncFunction } from '@renderer/utils'
-import { Avatar, Progress, Row, Tag } from 'antd'
+import { useSettings } from '@renderer/hooks/useSettings'
+import { useAppDispatch } from '@renderer/store'
+import { setUpdateState } from '@renderer/store/runtime'
+import { runAsyncFunction } from '@renderer/utils'
+import { UpgradeChannel } from '@shared/config/constant'
+import { Avatar, Button, Progress, Radio, Row, Switch, Tag, Tooltip } from 'antd'
+import { debounce } from 'lodash'
 import { FC, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Markdown from 'react-markdown'
@@ -16,17 +21,50 @@ import { SettingContainer, SettingDivider, SettingGroup, SettingRow, SettingTitl
 
 const AboutSettings: FC = () => {
   const [version, setVersion] = useState('')
+  const [isPortable, setIsPortable] = useState(false)
   const { t } = useTranslation()
+  const { autoCheckUpdate, setAutoCheckUpdate, testPlan, testChannel, setTestChannel } = useSettings()
   const { theme } = useTheme()
+  const dispatch = useAppDispatch()
   const { update } = useRuntime()
+
+  const onCheckUpdate = debounce(
+    async () => {
+      if (update.checking || update.downloading) {
+        return
+      }
+
+      if (update.downloaded) {
+        window.api.showUpdateDialog()
+        return
+      }
+
+      dispatch(setUpdateState({ checking: true }))
+
+      try {
+        await window.api.checkForUpdate()
+      } catch (error) {
+        window.message.error(t('settings.about.updateError'))
+      }
+
+      dispatch(setUpdateState({ checking: false }))
+    },
+    2000,
+    { leading: true, trailing: false }
+  )
 
   const onOpenWebsite = (url: string) => {
     window.api.openWebsite(url)
   }
 
-  const hasNewVersion = update?.info?.version && version ? compareVersions(update.info.version, version) > 0 : false
+  // don't support downgrade, so we only check if the version is different
+  const hasNewVersion = update?.info?.version && version ? update.info.version !== version : false
 
   const currentChannelByVersion =
+    [
+      { pattern: `-${UpgradeChannel.BETA}.`, channel: UpgradeChannel.BETA },
+      { pattern: `-${UpgradeChannel.RC}.`, channel: UpgradeChannel.RC }
+    ].find(({ pattern }) => version.includes(pattern))?.channel || UpgradeChannel.LATEST
 
   const handleTestChannelChange = async (value: UpgradeChannel) => {
     if (testPlan && currentChannelByVersion !== UpgradeChannel.LATEST && value !== currentChannelByVersion) {
@@ -62,24 +100,6 @@ const AboutSettings: FC = () => {
     ]
   }
 
-  const handleSetTestPlan = (value: boolean) => {
-    setTestPlan(value)
-    dispatch(
-      setUpdateState({
-        available: false,
-        info: null,
-        downloaded: false,
-        checking: false,
-        downloading: false,
-        downloadProgress: 0
-      })
-    )
-
-    if (value === true) {
-      setTestChannel(getTestChannel())
-    }
-  }
-
   const getTestChannel = () => {
     if (testChannel === UpgradeChannel.LATEST) {
       return UpgradeChannel.RC
@@ -91,16 +111,9 @@ const AboutSettings: FC = () => {
     runAsyncFunction(async () => {
       const appInfo = await window.api.getAppInfo()
       setVersion(appInfo.version)
+      setIsPortable(appInfo.isPortable)
     })
-    setAutoCheckUpdate(autoCheckUpdate)
-  }, [autoCheckUpdate, setAutoCheckUpdate])
-
-  const onOpenDocs = () => {
-    const isChinese = i18n.language.startsWith('zh')
-    window.api.openWebsite(
-      isChinese ? 'https://docs.cherry-ai.com/' : 'https://docs.cherry-ai.com/cherry-studio-wen-dang/en-us'
-    )
-  }
+  }, [])
 
   return (
     <SettingContainer theme={theme}>
@@ -133,14 +146,61 @@ const AboutSettings: FC = () => {
               <Title>{APP_NAME}</Title>
               <Description>{t('settings.about.description')}</Description>
               <Tag
-                onClick={() => onOpenWebsite('https://github.com/CherryHQ/cherry-studio/releases')}
+                onClick={() => onOpenWebsite('https://github.com/guoruqiang/cherry-studio/releases')}
                 color="cyan"
                 style={{ marginTop: 8, cursor: 'pointer' }}>
                 v{version}
               </Tag>
             </VersionWrapper>
           </Row>
+          {!isPortable && (
+            <CheckUpdateButton
+              onClick={onCheckUpdate}
+              loading={update.checking}
+              disabled={update.downloading || update.checking}>
+              {update.downloading
+                ? t('settings.about.downloading')
+                : update.available
+                  ? t('settings.about.checkUpdate.available')
+                  : t('settings.about.checkUpdate.label')}
+            </CheckUpdateButton>
+          )}
         </AboutHeader>
+        {!isPortable && (
+          <>
+            <SettingDivider />
+            <SettingRow>
+              <SettingRowTitle>{t('settings.general.auto_check_update.title')}</SettingRowTitle>
+              <Switch value={autoCheckUpdate} onChange={(v) => setAutoCheckUpdate(v)} />
+            </SettingRow>
+            <SettingDivider />
+            {/* <SettingRow>
+              <SettingRowTitle>{t('settings.general.test_plan.title')}</SettingRowTitle>
+              <Tooltip title={t('settings.general.test_plan.tooltip')} trigger={['hover', 'focus']}>
+                <Switch value={testPlan} onChange={(v) => handleSetTestPlan(v)} />
+              </Tooltip>
+            </SettingRow> */}
+            {testPlan && (
+              <>
+                <SettingDivider />
+                <SettingRow>
+                  <SettingRowTitle>{t('settings.general.test_plan.version_options')}</SettingRowTitle>
+                  <Radio.Group
+                    size="small"
+                    buttonStyle="solid"
+                    value={getTestChannel()}
+                    onChange={(e) => handleTestChannelChange(e.target.value)}>
+                    {getAvailableTestChannels().map((option) => (
+                      <Tooltip key={option.value} title={option.tooltip}>
+                        <Radio.Button value={option.value}>{option.label}</Radio.Button>
+                      </Tooltip>
+                    ))}
+                  </Radio.Group>
+                </SettingRow>
+              </>
+            )}
+          </>
+        )}
       </SettingGroup>
       {hasNewVersion && update.info && (
         <SettingGroup theme={theme}>
@@ -159,6 +219,65 @@ const AboutSettings: FC = () => {
           </UpdateNotesWrapper>
         </SettingGroup>
       )}
+      {/* <SettingGroup theme={theme}>
+        <SettingRow>
+          <SettingRowTitle>
+            <BadgeQuestionMark size={18} />
+            {t('docs.title')}
+          </SettingRowTitle>
+          <Button onClick={onOpenDocs}>{t('settings.about.website.button')}</Button>
+        </SettingRow>
+        <SettingDivider />
+        <SettingRow>
+          <SettingRowTitle>
+            <Rss size={18} />
+            {t('settings.about.releases.title')}
+          </SettingRowTitle>
+          <Button onClick={showReleases}>{t('settings.about.releases.button')}</Button>
+        </SettingRow>
+        <SettingDivider />
+        <SettingRow>
+          <SettingRowTitle>
+            <Globe size={18} />
+            {t('settings.about.website.title')}
+          </SettingRowTitle>
+          <Button onClick={() => onOpenWebsite('https://cherry-ai.com')}>{t('settings.about.website.button')}</Button>
+        </SettingRow>
+        <SettingDivider />
+        <SettingRow>
+          <SettingRowTitle>
+            <Github size={18} />
+            {t('settings.about.feedback.title')}
+          </SettingRowTitle>
+          <Button onClick={() => onOpenWebsite('https://github.com/CherryHQ/cherry-studio/issues/new/choose')}>
+            {t('settings.about.feedback.button')}
+          </Button>
+        </SettingRow>
+        <SettingDivider />
+        <SettingRow>
+          <SettingRowTitle>
+            <FileCheck size={18} />
+            {t('settings.about.license.title')}
+          </SettingRowTitle>
+          <Button onClick={showLicense}>{t('settings.about.license.button')}</Button>
+        </SettingRow>
+        <SettingDivider />
+        <SettingRow>
+          <SettingRowTitle>
+            <Mail size={18} />
+            {t('settings.about.contact.title')}
+          </SettingRowTitle>
+          <Button onClick={mailto}>{t('settings.about.contact.button')}</Button>
+        </SettingRow>
+        <SettingDivider />
+        <SettingRow>
+          <SettingRowTitle>
+            <Bug size={18} />
+            {t('settings.about.debug.title')}
+          </SettingRowTitle>
+          <Button onClick={debug}>{t('settings.about.debug.open')}</Button>
+        </SettingRow>
+      </SettingGroup> */}
     </SettingContainer>
   )
 }
@@ -192,6 +311,8 @@ const Description = styled.div`
   color: var(--color-text-2);
   text-align: center;
 `
+
+const CheckUpdateButton = styled(Button)``
 
 const AvatarWrapper = styled.div`
   position: relative;

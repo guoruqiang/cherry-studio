@@ -1,5 +1,4 @@
 import { SyncOutlined } from '@ant-design/icons'
-import CodeEditor from '@renderer/components/CodeEditor'
 import { HStack } from '@renderer/components/Layout'
 import TextBadge from '@renderer/components/TextBadge'
 import { isMac, THEME_COLOR_PRESETS } from '@renderer/config/constant'
@@ -9,10 +8,8 @@ import useUserTheme from '@renderer/hooks/useUserTheme'
 import { useAppDispatch } from '@renderer/store'
 import {
   AssistantIconType,
-  // DEFAULT_SIDEBAR_ICONS,
   setAssistantIconType,
   setClickAssistantToShowTopic,
-  setCustomCss,
   setPinTopicsToTop,
   setShowTopicTime
 } from '@renderer/store/settings'
@@ -61,7 +58,8 @@ const DisplaySettings: FC = () => {
     clickAssistantToShowTopic,
     showTopicTime,
     pinTopicsToTop,
-    customCss,
+    // customCss,
+    // sidebarIcons,
     setTheme,
     assistantIconType,
     userTheme
@@ -72,6 +70,9 @@ const DisplaySettings: FC = () => {
   const dispatch = useAppDispatch()
   const [currentZoom, setCurrentZoom] = useState(1.0)
   const { setUserTheme } = useUserTheme()
+
+  // const [visibleIcons, setVisibleIcons] = useState(sidebarIcons?.visible || DEFAULT_SIDEBAR_ICONS)
+  // const [disabledIcons, setDisabledIcons] = useState(sidebarIcons?.disabled || [])
 
   const handleWindowStyleChange = useCallback(
     (checked: boolean) => {
@@ -294,23 +295,23 @@ const DisplaySettings: FC = () => {
           />
         </SettingRow>
       </SettingGroup>
-      {navbarPosition === 'left' && (
-        // <SettingGroup theme={theme}>
-        //   <SettingTitle
-        //     style={{ display: 'flex', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-        //     <span>{t('settings.display.sidebar.title')}</span>
-        //     <ResetButtonWrapper>
-        //       <Button onClick={handleReset}>{t('common.reset')}</Button>
-        //     </ResetButtonWrapper>
-        //   </SettingTitle>
-        //   <SettingDivider />
-        //   <SidebarIconsManager
-        //     visibleIcons={visibleIcons}
-        //     disabledIcons={disabledIcons}
-        //     setVisibleIcons={setVisibleIcons}
-        //     setDisabledIcons={setDisabledIcons}
-        //   />
-        // </SettingGroup>
+      {/* {navbarPosition === 'left' && (
+        <SettingGroup theme={theme}>
+          <SettingTitle
+            style={{ display: 'flex', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span>{t('settings.display.sidebar.title')}</span>
+            <ResetButtonWrapper>
+              <Button onClick={handleReset}>{t('common.reset')}</Button>
+            </ResetButtonWrapper>
+          </SettingTitle>
+          <SettingDivider />
+          <SidebarIconsManager
+            visibleIcons={visibleIcons}
+            disabledIcons={disabledIcons}
+            setVisibleIcons={setVisibleIcons}
+            setDisabledIcons={setDisabledIcons}
+          />
+        </SettingGroup>
       )}
       <SettingGroup theme={theme}>
         <SettingTitle>
@@ -339,31 +340,21 @@ const DisplaySettings: FC = () => {
             borderRadius: '5px'
           }}
         />
-      </SettingGroup>
+      </SettingGroup> */}
     </SettingContainer>
   )
 }
 
-const TitleExtra = styled.div`
-  font-size: 12px;
-  cursor: pointer;
-  text-decoration: underline;
-  margin-left: 8px;
-  color: #1890ff;
-`
-// const ResetButtonWrapper = styled.div`
-//   display: flex;
-//   align-items: center;
-//   justify-content: center;
-// `
 const ZoomButtonGroup = styled.div`
   display: flex;
   align-items: center;
-  gap: 8px;
+  justify-content: flex-end;
+  width: 210px;
 `
 const ZoomValue = styled.span`
-  min-width: 48px;
+  width: 40px;
   text-align: center;
+  margin: 0 5px;
 `
 
 export default DisplaySettings

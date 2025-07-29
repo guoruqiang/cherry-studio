@@ -433,31 +433,35 @@ export const SYSTEM_MODELS: Record<string, Model[]> = {
   defaultModel: [
     {
       // 默认助手模型
-      id: 'deepseek-ai/DeepSeek-V3',
-      name: 'deepseek-ai/DeepSeek-V3',
-      provider: 'silicon',
-      group: 'deepseek-ai'
+      id: 'deepseek-v3',
+      name: 'DeepSeek-V3',
+      provider: 'new-api',
+      group: 'deepseek-ai',
+      endpoint_type: 'openai'
     },
     {
       // 默认话题命名模型
-      id: 'Qwen/Qwen3-8B',
-      name: 'Qwen/Qwen3-8B',
-      provider: 'silicon',
-      group: 'Qwen'
+      id: 'deepseek-v3',
+      name: 'DeepSeek-V3',
+      provider: 'new-api',
+      group: 'deepseek-ai',
+      endpoint_type: 'openai'
     },
     {
       // 默认翻译模型
-      id: 'deepseek-ai/DeepSeek-V3',
-      name: 'deepseek-ai/DeepSeek-V3',
-      provider: 'silicon',
-      group: 'deepseek-ai'
+      id: 'deepseek-v3',
+      name: 'DeepSeek-V3',
+      provider: 'new-api',
+      group: 'deepseek-ai',
+      endpoint_type: 'openai'
     },
     {
       // 默认快捷助手模型
-      id: 'deepseek-ai/DeepSeek-V3',
-      name: 'deepseek-ai/DeepSeek-V3',
-      provider: 'silicon',
-      group: 'deepseek-ai'
+      id: 'deepseek-v3',
+      name: 'DeepSeek-V3',
+      provider: 'new-api',
+      group: 'deepseek-ai',
+      endpoint_type: 'openai'
     }
   ],
   '302ai': [
@@ -878,20 +882,7 @@ export const SYSTEM_MODELS: Record<string, Model[]> = {
   ],
   alayanew: [],
   openai: [
-    { id: 'deepseek-r1', provider: 'openai', name: 'deepseek-r1', group: 'deepseek-r1' },
-    { id: 'deepseek-v3', provider: 'openai', name: 'deepseek-v3', group: 'deepseek-v3' },
-    { id: 'deepseek-r1-all', provider: 'openai', name: 'deepseek-r1-all', group: 'deepseek-r1-all' },
-    { id: 'deepseek-vision', provider: 'openai', name: 'deepseek-vision', group: 'deepseek-vision' },
-    { id: 'kimi', provider: 'openai', name: 'kimi', group: 'China' },
-    { id: 'qwen-chat', provider: 'openai', name: 'qwen-chat', group: 'China' },
-    { id: 'qwen-math', provider: 'openai', name: 'qwen-math', group: 'China' },
-    { id: 'grok-3', provider: 'openai', name: 'grok-3', group: 'grok-3' },
-    { id: 'grok-3-imageGen', provider: 'openai', name: 'grok-3-imageGen', group: 'grok-3' },
-    { id: 'grok-3-reasoning', provider: 'openai', name: 'grok-3-reasoning', group: 'grok-3' },
-    { id: 'gpt-3.5-turbo', provider: 'openai', name: ' gpt-3.5-turbo', group: 'Openai' },
-    { id: 'gpt-4', provider: 'openai', name: ' GPT-4', group: 'Openai' },
-    { id: 'gpt-4-vision-preview', provider: 'openai', name: ' GPT-4-vision-preview', group: 'Openai' },
-    { id: 'gpt-4-all', provider: 'openai', name: ' GPT-4-all', group: 'Openai_plus' },
+    { id: 'gpt-4.5-preview', provider: 'openai', name: ' gpt-4.5-preview', group: 'gpt-4.5' },
     { id: 'gpt-4o', provider: 'openai', name: ' GPT-4o', group: 'GPT 4o' },
     { id: 'gpt-4o-mini', provider: 'openai', name: ' GPT-4o-mini', group: 'GPT 4o' },
     { id: 'o1-mini', provider: 'openai', name: ' o1-mini', group: 'o1' },
@@ -2359,24 +2350,42 @@ export const SYSTEM_MODELS: Record<string, Model[]> = {
     }
   ],
   'new-api': [
-    { id: 'deepseek-r1', provider: 'openai', name: 'deepseek-r1', group: 'deepseek-r1' },
-    { id: 'deepseek-v3', provider: 'openai', name: 'deepseek-v3', group: 'deepseek-v3' },
-    { id: 'deepseek-r1-all', provider: 'openai', name: 'deepseek-r1-all', group: 'deepseek-r1-all' },
-    { id: 'deepseek-vision', provider: 'openai', name: 'deepseek-vision', group: 'deepseek-vision' },
-    { id: 'kimi', provider: 'openai', name: 'kimi', group: 'China' },
-    { id: 'qwen-chat', provider: 'openai', name: 'qwen-chat', group: 'China' },
-    { id: 'qwen-math', provider: 'openai', name: 'qwen-math', group: 'China' },
-    { id: 'grok-3', provider: 'openai', name: 'grok-3', group: 'grok-3' },
-    { id: 'grok-3-imageGen', provider: 'openai', name: 'grok-3-imageGen', group: 'grok-3' },
-    { id: 'grok-3-reasoning', provider: 'openai', name: 'grok-3-reasoning', group: 'grok-3' },
-    { id: 'gpt-3.5-turbo', provider: 'openai', name: ' gpt-3.5-turbo', group: 'Openai' },
-    { id: 'gpt-4', provider: 'openai', name: ' GPT-4', group: 'Openai' },
-    { id: 'gpt-4-vision-preview', provider: 'openai', name: ' GPT-4-vision-preview', group: 'Openai' },
-    { id: 'gpt-4-all', provider: 'openai', name: ' GPT-4-all', group: 'Openai_plus' },
-    { id: 'gpt-4o', provider: 'openai', name: ' GPT-4o', group: 'GPT 4o' },
-    { id: 'gpt-4o-mini', provider: 'openai', name: ' GPT-4o-mini', group: 'GPT 4o' },
-    { id: 'o1-mini', provider: 'openai', name: ' o1-mini', group: 'o1' },
-    { id: 'o1-preview', provider: 'openai', name: ' o1-preview', group: 'o1' }
+    { id: 'deepseek-r1', provider: 'new-api', name: 'deepseek-r1', group: 'deepseek-ai', endpoint_type: 'openai' },
+    { id: 'deepseek-v3', provider: 'new-api', name: 'deepseek-v3', group: 'deepseek-ai', endpoint_type: 'openai' },
+    {
+      id: 'deepseek-r1-all',
+      provider: 'new-api',
+      name: 'deepseek-r1-all',
+      group: 'deepseek-ai',
+      endpoint_type: 'openai'
+    },
+    {
+      id: 'deepseek-vision',
+      provider: 'new-api',
+      name: 'deepseek-vision',
+      group: 'deepseek-ai',
+      endpoint_type: 'openai'
+    },
+    { id: 'kimi', provider: 'new-api', name: 'kimi', group: 'China', endpoint_type: 'openai' },
+    { id: 'qwen-chat', provider: 'new-api', name: 'qwen-chat', group: 'China', endpoint_type: 'openai' },
+    { id: 'QwQ-32B', provider: 'new-api', name: 'qwen-math', group: 'China', endpoint_type: 'openai' },
+    { id: 'QwQ-72B', provider: 'new-api', name: 'qwen-math', group: 'China', endpoint_type: 'openai' },
+    { id: 'gpt-3.5-turbo', provider: 'new-api', name: ' gpt-3.5-turbo', group: 'Openai', endpoint_type: 'openai' },
+    { id: 'gpt-4', provider: 'new-api', name: ' GPT-4', group: 'Openai', endpoint_type: 'openai' },
+    {
+      id: 'gpt-4-vision-preview',
+      provider: 'new-api',
+      name: ' GPT-4-vision-preview',
+      group: 'Openai',
+      endpoint_type: 'openai'
+    },
+    { id: 'gpt-4-all', provider: 'new-api', name: ' GPT-4-all', group: 'Openai_plus', endpoint_type: 'openai' },
+    { id: 'gpt-4o', provider: 'new-api', name: ' GPT-4o', group: 'GPT 4o', endpoint_type: 'openai' },
+    { id: 'gpt-4o-all', provider: 'new-api', name: ' GPT-4-all', group: 'Openai_plus', endpoint_type: 'openai' },
+    { id: 'gpt-4o-image', provider: 'new-api', name: ' GPT-4-all', group: 'Openai_plus', endpoint_type: 'openai' },
+    { id: 'gpt-4o-mini', provider: 'new-api', name: ' GPT-4o-mini', group: 'GPT 4o', endpoint_type: 'openai' },
+    { id: 'o1-mini', provider: 'new-api', name: ' o1-mini', group: 'o1', endpoint_type: 'openai' },
+    { id: 'o1-preview', provider: 'new-api', name: ' o1-preview', group: 'o1', endpoint_type: 'openai' }
   ],
   'aws-bedrock': []
 }

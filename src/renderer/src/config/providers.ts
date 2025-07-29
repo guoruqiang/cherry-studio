@@ -685,11 +685,11 @@ export const PROVIDER_CONFIG = {
   },
   'new-api': {
     api: {
-      url: 'http://localhost:3000'
+      url: 'https://api.nwafu-ai.cn'
     },
     websites: {
-      official: 'https://docs.newapi.pro/',
-      docs: 'https://docs.newapi.pro'
+      official: 'https://gpt.nwafu-ai.cn/',
+      docs: 'https://gpt.nwafu-ai.cn/'
     }
   },
   'aws-bedrock': {

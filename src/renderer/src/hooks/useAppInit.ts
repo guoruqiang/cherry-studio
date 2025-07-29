@@ -9,8 +9,8 @@ import MemoryService from '@renderer/services/MemoryService'
 import { useAppDispatch } from '@renderer/store'
 import { useAppSelector } from '@renderer/store'
 import { selectMemoryConfig } from '@renderer/store/memory'
-import { setAvatar, setFilesPath, setResourcesPath, setUpdateState } from '@renderer/store/runtime'
-import { delay, runAsyncFunction } from '@renderer/utils'
+import { setAvatar, setFilesPath, setResourcesPath } from '@renderer/store/runtime'
+import { runAsyncFunction } from '@renderer/utils'
 import { defaultLanguage } from '@shared/config/constant'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { useEffect } from 'react'
@@ -59,12 +59,13 @@ export function useAppInit() {
 
   useEffect(() => {
     runAsyncFunction(async () => {
-      const { isPackaged } = await window.api.getAppInfo()
-      if (isPackaged && autoCheckUpdate) {
-        await delay(2)
-        const { updateInfo } = await window.api.checkForUpdate()
-        dispatch(setUpdateState({ info: updateInfo }))
-      }
+      // 禁用自动检查更新
+      // const { isPackaged } = await window.api.getAppInfo()
+      // if (isPackaged && autoCheckUpdate) {
+      //   await delay(2)
+      //   const { updateInfo } = await window.api.checkForUpdate()
+      //   dispatch(setUpdateState({ info: updateInfo }))
+      // }
     })
   }, [dispatch, autoCheckUpdate])
 

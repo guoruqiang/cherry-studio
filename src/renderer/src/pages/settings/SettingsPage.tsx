@@ -38,8 +38,6 @@ const SettingsPage: FC = () => {
   const { pathname } = useLocation()
   const { t } = useTranslation()
 
-  const showMiniAppSettings = false
-
   const isRoute = (path: string): string => (pathname.startsWith(path) ? 'active' : '')
 
   return (
