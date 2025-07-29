@@ -1,3 +1,4 @@
+import { isMac } from '@renderer/config/constant'
 import { useSelectionAssistant } from '@renderer/hooks/useSelectionAssistant'
 import { useSettings } from '@renderer/hooks/useSettings'
 import i18n from '@renderer/i18n'
@@ -29,15 +30,12 @@ const SelectionActionApp: FC = () => {
   const [showOpacitySlider, setShowOpacitySlider] = useState(false)
   const [opacity, setOpacity] = useState(actionWindowOpacity)
 
+  const shouldCloseWhenBlur = useRef(false)
   const contentElementRef = useRef<HTMLDivElement>(null)
   const isAutoScrollEnabled = useRef(true)
-  const shouldCloseWhenBlur = useRef(false)
+  const lastScrollHeight = useRef(0)
 
   useEffect(() => {
-    if (isAutoPin) {
-      window.api.selection.pinActionWindow(true)
-    }
-
     const actionListenRemover = window.electron?.ipcRenderer.on(
       IpcChannel.Selection_UpdateActionData,
       (_, actionItem: ActionItem) => {
@@ -57,6 +55,20 @@ const SelectionActionApp: FC = () => {
     // don't need any dependencies
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  useEffect(() => {
+    if (isAutoPin) {
+      window.api.selection.pinActionWindow(true)
+      setIsPinned(true)
+    } else if (!isActionLoaded.current) {
+      window.api.selection.pinActionWindow(false)
+      setIsPinned(false)
+    }
+  }, [isAutoPin])
+
+  useEffect(() => {
+    shouldCloseWhenBlur.current = isAutoClose && !isPinned
+  }, [isAutoClose, isPinned])
 
   useEffect(() => {
     i18n.changeLanguage(language || navigator.language || defaultLanguage)
@@ -80,6 +92,8 @@ const SelectionActionApp: FC = () => {
     const contentEl = contentElementRef.current
     if (contentEl) {
       contentEl.addEventListener('scroll', handleUserScroll)
+      // Initialize the scroll height
+      lastScrollHeight.current = contentEl.scrollHeight
     }
     return () => {
       if (contentEl) {
@@ -95,10 +109,6 @@ const SelectionActionApp: FC = () => {
       document.title = `${action.isBuiltIn ? t(action.name) : action.name} - ${t('selection.name')}`
     }
   }, [action, t])
-
-  useEffect(() => {
-    shouldCloseWhenBlur.current = isAutoClose && !isPinned
-  }, [isAutoClose, isPinned])
 
   useEffect(() => {
     //if the action is loaded, we should not set the opacity update from settings
@@ -140,6 +150,7 @@ const SelectionActionApp: FC = () => {
     setOpacity(value)
   }
 
+  //must useCallback to avoid re-rendering the component
   const handleScrollToBottom = useCallback(() => {
     if (contentElementRef.current && isAutoScrollEnabled.current) {
       contentElementRef.current.scrollTo({
@@ -153,9 +164,19 @@ const SelectionActionApp: FC = () => {
     if (!contentElementRef.current) return
 
     const { scrollTop, scrollHeight, clientHeight } = contentElementRef.current
-    const isAtBottom = Math.abs(scrollHeight - scrollTop - clientHeight) < 24
 
-    // Only update isAutoScrollEnabled if user is at bottom
+    // Check if content height has increased (new content added)
+    const contentIncreased = scrollHeight > lastScrollHeight.current
+    lastScrollHeight.current = scrollHeight
+
+    // If content increased and we're in auto-scroll mode, don't change the auto-scroll state
+    if (contentIncreased && isAutoScrollEnabled.current) {
+      return
+    }
+
+    // Only check user position if content didn't increase
+    const isAtBottom = Math.abs(scrollHeight - scrollTop - clientHeight) < 32
+
     if (isAtBottom) {
       isAutoScrollEnabled.current = true
     } else {
@@ -168,7 +189,7 @@ const SelectionActionApp: FC = () => {
 
   return (
     <WindowFrame $opacity={opacity / 100}>
-      <TitleBar $isWindowFocus={isWindowFocus}>
+      <TitleBar $isWindowFocus={isWindowFocus} style={isMac ? { paddingLeft: '70px' } : {}}>
         {action.icon && (
           <TitleBarIcon>
             <DynamicIcon
@@ -216,9 +237,12 @@ const SelectionActionApp: FC = () => {
               />
             </OpacitySlider>
           )}
-
-          <WinButton type="text" icon={<Minus size={16} />} onClick={handleMinimize} />
-          <WinButton type="text" icon={<X size={16} />} onClick={handleClose} className="close" />
+          {!isMac && (
+            <>
+              <WinButton type="text" icon={<Minus size={16} />} onClick={handleMinimize} />
+              <WinButton type="text" icon={<X size={16} />} onClick={handleClose} className="close" />
+            </>
+          )}
         </TitleBarButtons>
       </TitleBar>
       <MainContainer>

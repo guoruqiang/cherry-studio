@@ -7,6 +7,7 @@
 @use './animation.scss';
 @import '../fonts/icon-fonts/iconfont.css';
 @import '../fonts/ubuntu/ubuntu.css';
+@import '../fonts/country-flag-fonts/flag.css';
 
 *,
 *::before,
@@ -111,71 +112,79 @@ ul {
   word-wrap: break-word;
 }
 
-.bubble {
-  background-color: var(--chat-background);
-  #chat-main {
-    background-color: var(--chat-background);
+.bubble:not(.multi-select-mode) {
+  .block-wrapper {
+    display: flow-root;
   }
-  #messages {
-    background-color: var(--chat-background);
+
+  .block-wrapper:last-child > *:last-child {
+    margin-bottom: 0;
   }
-  #inputbar {
-    margin: -5px 15px 15px 15px;
-    background: var(--color-background);
+
+  .message-content-container > *:last-child {
+    margin-bottom: 0;
   }
-  .system-prompt {
-    background-color: var(--chat-background-assistant);
-  }
-  .message-content-container {
-    margin: 5px 0;
-    border-radius: 8px;
-    padding: 10px 15px 0 15px;
-  }
+
   .message-thought-container {
     margin-top: 8px;
   }
+
   .message-user {
-    color: var(--chat-text-user);
-    .markdown,
-    .anticon,
-    .iconfont,
-    .lucide,
-    .message-tokens {
-      color: var(--chat-text-user) !important;
+    .message-header {
+      flex-direction: row-reverse;
+      text-align: right;
+      .message-header-info-wrap {
+        flex-direction: row-reverse;
+        text-align: right;
+      }
     }
-    .message-action-button:hover {
-      background-color: var(--color-white-soft);
-    }
-  }
-  .group-grid-container.horizontal,
-  .group-grid-container.grid {
-    .message-content-container-assistant {
-      padding: 0;
-    }
-  }
-  .group-message-wrapper {
-    background-color: var(--color-background);
     .message-content-container {
-      width: 100%;
+      border-radius: 10px;
+      padding: 10px 16px 10px 16px;
+      background-color: var(--chat-background-user);
+      align-self: self-end;
+    }
+    .MessageFooter {
+      margin-top: 2px;
+      align-self: self-end;
     }
   }
-  .group-menu-bar {
-    background-color: var(--color-background);
+
+  .message-assistant {
+    .message-content-container {
+      padding-left: 0;
+    }
+    .MessageFooter {
+      margin-left: 0;
+    }
   }
+
   code {
     color: var(--color-text);
   }
+  .markdown {
+    display: flow-root;
+    *:last-child {
+      margin-bottom: 0;
+    }
+  }
 }
 
-.lucide {
+.lucide:not(.lucide-custom) {
   color: var(--color-icon);
 }
 
-span.highlight {
+::highlight(search-matches) {
   background-color: var(--color-background-highlight);
   color: var(--color-highlight);
 }
 
-span.highlight.selected {
+::highlight(current-match) {
   background-color: var(--color-background-highlight-accent);
+}
+
+textarea {
+  &::-webkit-resizer {
+    display: none;
+  }
 }

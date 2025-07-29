@@ -26,12 +26,81 @@ const AboutSettings: FC = () => {
 
   const hasNewVersion = update?.info?.version && version ? compareVersions(update.info.version, version) > 0 : false
 
+  const currentChannelByVersion =
+
+  const handleTestChannelChange = async (value: UpgradeChannel) => {
+    if (testPlan && currentChannelByVersion !== UpgradeChannel.LATEST && value !== currentChannelByVersion) {
+      window.message.warning(t('settings.general.test_plan.version_channel_not_match'))
+    }
+    setTestChannel(value)
+    // Clear update info when switching upgrade channel
+    dispatch(
+      setUpdateState({
+        available: false,
+        info: null,
+        downloaded: false,
+        checking: false,
+        downloading: false,
+        downloadProgress: 0
+      })
+    )
+  }
+
+  // Get available test version options based on current version
+  const getAvailableTestChannels = () => {
+    return [
+      {
+        tooltip: t('settings.general.test_plan.rc_version_tooltip'),
+        label: t('settings.general.test_plan.rc_version'),
+        value: UpgradeChannel.RC
+      },
+      {
+        tooltip: t('settings.general.test_plan.beta_version_tooltip'),
+        label: t('settings.general.test_plan.beta_version'),
+        value: UpgradeChannel.BETA
+      }
+    ]
+  }
+
+  const handleSetTestPlan = (value: boolean) => {
+    setTestPlan(value)
+    dispatch(
+      setUpdateState({
+        available: false,
+        info: null,
+        downloaded: false,
+        checking: false,
+        downloading: false,
+        downloadProgress: 0
+      })
+    )
+
+    if (value === true) {
+      setTestChannel(getTestChannel())
+    }
+  }
+
+  const getTestChannel = () => {
+    if (testChannel === UpgradeChannel.LATEST) {
+      return UpgradeChannel.RC
+    }
+    return testChannel
+  }
+
   useEffect(() => {
     runAsyncFunction(async () => {
       const appInfo = await window.api.getAppInfo()
       setVersion(appInfo.version)
     })
-  }, [])
+    setAutoCheckUpdate(autoCheckUpdate)
+  }, [autoCheckUpdate, setAutoCheckUpdate])
+
+  const onOpenDocs = () => {
+    const isChinese = i18n.language.startsWith('zh')
+    window.api.openWebsite(
+      isChinese ? 'https://docs.cherry-ai.com/' : 'https://docs.cherry-ai.com/cherry-studio-wen-dang/en-us'
+    )
+  }
 
   return (
     <SettingContainer theme={theme}>

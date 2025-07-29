@@ -1,3 +1,6 @@
+import { getProviderLabel } from '@renderer/i18n/label'
+import { Provider } from '@renderer/types'
+
 /**
  * 从模型 ID 中提取默认组名。
  * 规则如下：
@@ -44,6 +47,42 @@ export const getDefaultGroupName = (id: string, provider?: string): string => {
   }
 
   return str
+}
+
+/**
+ * 从模型 ID 中提取基础名称。
+ * 例如：
+ * - 'deepseek/deepseek-r1' => 'deepseek-r1'
+ * - 'deepseek-ai/deepseek/deepseek-r1' => 'deepseek-r1'
+ * @param {string} id 模型 ID
+ * @param {string} [delimiter='/'] 分隔符，默认为 '/'
+ * @returns {string} 基础名称
+ */
+export const getBaseModelName = (id: string, delimiter: string = '/'): string => {
+  const parts = id.split(delimiter)
+  return parts[parts.length - 1]
+}
+
+/**
+ * 从模型 ID 中提取基础名称并转换为小写。
+ * 例如：
+ * - 'deepseek/DeepSeek-R1' => 'deepseek-r1'
+ * - 'deepseek-ai/deepseek/DeepSeek-R1' => 'deepseek-r1'
+ * @param {string} id 模型 ID
+ * @param {string} [delimiter='/'] 分隔符，默认为 '/'
+ * @returns {string} 小写的基础名称
+ */
+export const getLowerBaseModelName = (id: string, delimiter: string = '/'): string => {
+  return getBaseModelName(id, delimiter).toLowerCase()
+}
+
+/**
+ * 获取模型服务商名称，根据是否内置服务商来决定要不要翻译
+ * @param provider 服务商
+ * @returns 描述性的名字
+ */
+export const getFancyProviderName = (provider: Provider) => {
+  return provider.isSystem ? getProviderLabel(provider.id) : provider.name
 }
 
 /**
@@ -101,7 +140,7 @@ export function isEmoji(str: string): boolean {
  * @returns {string} 处理后的字符串
  */
 export function removeSpecialCharactersForTopicName(str: string): string {
-  return str.replace(/[\r\n]+/g, ' ').trim()
+  return str.replace(/["'\r\n]+/g, ' ').trim()
 }
 
 /**

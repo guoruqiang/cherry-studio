@@ -1,94 +1,59 @@
-import { EVENT_NAMES, EventEmitter } from '@renderer/services/EventService'
 import { Dropdown } from 'antd'
-import { useCallback, useEffect, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import styled from 'styled-components'
 
 interface ContextMenuProps {
   children: React.ReactNode
-  onContextMenu?: (e: React.MouseEvent) => void
 }
 
-const ContextMenu: React.FC<ContextMenuProps> = ({ children, onContextMenu }) => {
+const ContextMenu: React.FC<ContextMenuProps> = ({ children }) => {
   const { t } = useTranslation()
-  const [contextMenuPosition, setContextMenuPosition] = useState<{ x: number; y: number } | null>(null)
-  const [selectedQuoteText, setSelectedQuoteText] = useState<string>('')
-  const [selectedText, setSelectedText] = useState<string>('')
+  const [selectedText, setSelectedText] = useState<string | undefined>(undefined)
 
-  const handleContextMenu = useCallback(
-    (e: React.MouseEvent) => {
-      e.preventDefault()
-      const _selectedText = window.getSelection()?.toString()
-      if (_selectedText) {
-        const quotedText =
-          _selectedText
-            .split('\n')
-            .map((line) => `> ${line}`)
-            .join('\n') + '\n-------------'
-        setSelectedQuoteText(quotedText)
-        setContextMenuPosition({ x: e.clientX, y: e.clientY })
-        setSelectedText(_selectedText)
-      }
-      onContextMenu?.(e)
-    },
-    [onContextMenu]
-  )
+  const contextMenuItems = useMemo(() => {
+    if (!selectedText) return []
 
-  useEffect(() => {
-    const handleClick = () => {
-      setContextMenuPosition(null)
-    }
-    document.addEventListener('click', handleClick)
-    return () => {
-      document.removeEventListener('click', handleClick)
-    }
-  }, [])
-
-  // 获取右键菜单项
-  const getContextMenuItems = (t: (key: string) => string, selectedQuoteText: string, selectedText: string) => [
-    {
-      key: 'copy',
-      label: t('common.copy'),
-      onClick: () => {
-        if (selectedText) {
-          navigator.clipboard
-            .writeText(selectedText)
-            .then(() => {
-              window.message.success({ content: t('message.copied'), key: 'copy-message' })
-            })
-            .catch(() => {
-              window.message.error({ content: t('message.copy.failed'), key: 'copy-message-failed' })
-            })
+    return [
+      {
+        key: 'copy',
+        label: t('common.copy'),
+        onClick: () => {
+          if (selectedText) {
+            navigator.clipboard
+              .writeText(selectedText)
+              .then(() => {
+                window.message.success({ content: t('message.copied'), key: 'copy-message' })
+              })
+              .catch(() => {
+                window.message.error({ content: t('message.copy.failed'), key: 'copy-message-failed' })
+              })
+          }
+        }
+      },
+      {
+        key: 'quote',
+        label: t('chat.message.quote'),
+        onClick: () => {
+          if (selectedText) {
+            window.api?.quoteToMainWindow(selectedText)
+          }
         }
       }
-    },
-    {
-      key: 'quote',
-      label: t('chat.message.quote'),
-      onClick: () => {
-        if (selectedQuoteText) {
-          EventEmitter.emit(EVENT_NAMES.QUOTE_TEXT, selectedQuoteText)
-        }
-      }
+    ]
+  }, [selectedText, t])
+
+  const onOpenChange = (open: boolean) => {
+    if (open) {
+      const selectedText = window.getSelection()?.toString()
+      setSelectedText(selectedText)
     }
-  ]
+  }
 
   return (
-    <ContextContainer onContextMenu={handleContextMenu} className="context-menu-container">
-      {contextMenuPosition && (
-        <Dropdown
-          overlayStyle={{ position: 'fixed', left: contextMenuPosition.x, top: contextMenuPosition.y, zIndex: 1000 }}
-          menu={{ items: getContextMenuItems(t, selectedQuoteText, selectedText) }}
-          open={true}
-          trigger={['contextMenu']}>
-          <div />
-        </Dropdown>
-      )}
+    <Dropdown onOpenChange={onOpenChange} menu={{ items: contextMenuItems }} trigger={['contextMenu']}>
       {children}
-    </ContextContainer>
+    </Dropdown>
   )
 }
-
-const ContextContainer = styled.div``
 
 export default ContextMenu

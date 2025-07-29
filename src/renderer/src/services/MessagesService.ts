@@ -1,12 +1,13 @@
+import { loggerService } from '@logger'
 import SearchPopup from '@renderer/components/Popups/SearchPopup'
-import { DEFAULT_CONTEXTCOUNT } from '@renderer/config/constant'
+import { DEFAULT_CONTEXTCOUNT, MAX_CONTEXT_COUNT, UNLIMITED_CONTEXT_COUNT } from '@renderer/config/constant'
 import { getTopicById } from '@renderer/hooks/useTopic'
 import i18n from '@renderer/i18n'
 import { fetchMessagesSummary } from '@renderer/services/ApiService'
 import store from '@renderer/store'
 import { messageBlocksSelectors, removeManyBlocks } from '@renderer/store/messageBlock'
 import { selectMessagesForTopic } from '@renderer/store/newMessage'
-import type { Assistant, FileType, MCPServer, Model, Topic, Usage } from '@renderer/types'
+import type { Assistant, FileMetadata, Model, Topic, Usage } from '@renderer/types'
 import { FileTypes } from '@renderer/types'
 import type { Message, MessageBlock } from '@renderer/types/newMessage'
 import { AssistantMessageStatus, MessageBlockStatus, MessageBlockType } from '@renderer/types/newMessage'
@@ -30,6 +31,8 @@ import { getAssistantById, getAssistantProvider, getDefaultModel } from './Assis
 import { EVENT_NAMES, EventEmitter } from './EventService'
 import FileManager from './FileManager'
 
+const logger = loggerService.withContext('MessagesService')
+
 export {
   filterContextMessages,
   filterEmptyMessages,
@@ -41,7 +44,7 @@ export {
 
 export function getContextCount(assistant: Assistant, messages: Message[]) {
   const rawContextCount = assistant?.settings?.contextCount ?? DEFAULT_CONTEXTCOUNT
-  const maxContextCount = rawContextCount === 100 ? 100000 : rawContextCount
+  const maxContextCount = rawContextCount === MAX_CONTEXT_COUNT ? UNLIMITED_CONTEXT_COUNT : rawContextCount
 
   const _messages = takeRight(messages, maxContextCount)
 
@@ -65,7 +68,7 @@ export function deleteMessageFiles(message: Message) {
   message.blocks?.forEach((blockId) => {
     const block = messageBlocksSelectors.selectById(state, blockId)
     if (block && (block.type === MessageBlockType.IMAGE || block.type === MessageBlockType.FILE)) {
-      const fileData = (block as any).file as FileType | undefined
+      const fileData = (block as any).file as FileMetadata | undefined
       if (fileData) {
         FileManager.deleteFiles([fileData])
       }
@@ -108,19 +111,16 @@ export function getUserMessage({
   content,
   files,
   // Keep other potential params if needed by createMessage
-  knowledgeBaseIds,
   mentions,
-  enabledMCPs,
   usage
 }: {
   assistant: Assistant
   topic: Topic
   type?: Message['type']
   content?: string
-  files?: FileType[]
+  files?: FileMetadata[]
   knowledgeBaseIds?: string[]
   mentions?: Model[]
-  enabledMCPs?: MCPServer[]
   usage?: Usage
 }): { message: Message; blocks: MessageBlock[] } {
   const defaultModel = getDefaultModel()
@@ -129,11 +129,11 @@ export function getUserMessage({
   const blocks: MessageBlock[] = []
   const blockIds: string[] = []
 
-  if (content?.trim()) {
+  // 内容为空也应该创建空文本块
+  if (content !== undefined) {
     // Pass messageId when creating blocks
     const textBlock = createMainTextBlock(messageId, content, {
-      status: MessageBlockStatus.SUCCESS,
-      knowledgeBaseIds
+      status: MessageBlockStatus.SUCCESS
     })
     blocks.push(textBlock)
     blockIds.push(textBlock.id)
@@ -164,7 +164,7 @@ export function getUserMessage({
       blocks: blockIds,
       // 移除knowledgeBaseIds
       mentions,
-      enabledMCPs,
+      // 移除mcp
       type,
       usage
     }
@@ -202,7 +202,6 @@ export function resetAssistantMessage(message: Message, model?: Model): Message 
     useful: undefined,
     askId: undefined,
     mentions: undefined,
-    enabledMCPs: undefined,
     blocks: [],
     createdAt: new Date().toISOString()
   }
@@ -213,7 +212,11 @@ export async function getMessageTitle(message: Message, length = 30): Promise<st
 
   if ((store.getState().settings as any).useTopicNamingForMessageTitle) {
     try {
-      window.message.loading({ content: t('chat.topics.export.wait_for_title_naming'), key: 'message-title-naming' })
+      window.message.loading({
+        content: t('chat.topics.export.wait_for_title_naming'),
+        key: 'message-title-naming',
+        duration: 0
+      })
 
       const tempMessage = resetMessage(message, {
         status: AssistantMessageStatus.SUCCESS,
@@ -225,16 +228,14 @@ export async function getMessageTitle(message: Message, length = 30): Promise<st
       // store.dispatch(messageBlocksActions.upsertOneBlock(tempTextBlock))
 
       // store.dispatch(messageBlocksActions.removeOneBlock(tempTextBlock.id))
-
+      window.message.destroy('message-title-naming')
       if (title) {
         window.message.success({ content: t('chat.topics.export.title_naming_success'), key: 'message-title-naming' })
         return title
-      } else {
-        window.message?.error(t('message.error.fetchTopicName'))
       }
     } catch (e) {
       window.message.error({ content: t('chat.topics.export.title_naming_failed'), key: 'message-title-naming' })
-      console.error('Failed to generate title using topic naming, downgraded to default logic', e)
+      logger.error('Failed to generate title using topic naming, downgraded to default logic', e as Error)
     }
   }
 
@@ -250,7 +251,7 @@ export async function getMessageTitle(message: Message, length = 30): Promise<st
 export function checkRateLimit(assistant: Assistant): boolean {
   const provider = getAssistantProvider(assistant)
 
-  if (!provider.rateLimit) {
+  if (!provider?.rateLimit) {
     return false
   }
 

@@ -1,4 +1,4 @@
-import { defaultLanguage, ZOOM_SHORTCUTS } from '@shared/config/constant'
+import { defaultLanguage, UpgradeChannel, ZOOM_SHORTCUTS } from '@shared/config/constant'
 import { LanguageVarious, Shortcut, ThemeMode } from '@types'
 import { app } from 'electron'
 import Store from 'electron-store'
@@ -16,13 +16,18 @@ export enum ConfigKeys {
   ClickTrayToShowQuickAssistant = 'clickTrayToShowQuickAssistant',
   EnableQuickAssistant = 'enableQuickAssistant',
   AutoUpdate = 'autoUpdate',
+  TestPlan = 'testPlan',
+  TestChannel = 'testChannel',
   EnableDataCollection = 'enableDataCollection',
   SelectionAssistantEnabled = 'selectionAssistantEnabled',
   SelectionAssistantTriggerMode = 'selectionAssistantTriggerMode',
   SelectionAssistantFollowToolbar = 'selectionAssistantFollowToolbar',
   SelectionAssistantRemeberWinSize = 'selectionAssistantRemeberWinSize',
   SelectionAssistantFilterMode = 'selectionAssistantFilterMode',
-  SelectionAssistantFilterList = 'selectionAssistantFilterList'
+  SelectionAssistantFilterList = 'selectionAssistantFilterList',
+  DisableHardwareAcceleration = 'disableHardwareAcceleration',
+  Proxy = 'proxy',
+  EnableDeveloperMode = 'enableDeveloperMode'
 }
 
 export class ConfigManager {
@@ -141,6 +146,22 @@ export class ConfigManager {
     this.set(ConfigKeys.AutoUpdate, value)
   }
 
+  getTestPlan(): boolean {
+    return this.get<boolean>(ConfigKeys.TestPlan, false)
+  }
+
+  setTestPlan(value: boolean) {
+    this.set(ConfigKeys.TestPlan, value)
+  }
+
+  getTestChannel(): UpgradeChannel {
+    return this.get<UpgradeChannel>(ConfigKeys.TestChannel)
+  }
+
+  setTestChannel(value: UpgradeChannel) {
+    this.set(ConfigKeys.TestChannel, value)
+  }
+
   getEnableDataCollection(): boolean {
     return this.get<boolean>(ConfigKeys.EnableDataCollection, true)
   }
@@ -151,7 +172,7 @@ export class ConfigManager {
 
   // Selection Assistant: is enabled the selection assistant
   getSelectionAssistantEnabled(): boolean {
-    return this.get<boolean>(ConfigKeys.SelectionAssistantEnabled, true)
+    return this.get<boolean>(ConfigKeys.SelectionAssistantEnabled, false)
   }
 
   setSelectionAssistantEnabled(value: boolean) {
@@ -200,8 +221,24 @@ export class ConfigManager {
     this.setAndNotify(ConfigKeys.SelectionAssistantFilterList, value)
   }
 
+  getDisableHardwareAcceleration(): boolean {
+    return this.get<boolean>(ConfigKeys.DisableHardwareAcceleration, false)
+  }
+
+  setDisableHardwareAcceleration(value: boolean) {
+    this.set(ConfigKeys.DisableHardwareAcceleration, value)
+  }
+
   setAndNotify(key: string, value: unknown) {
     this.set(key, value, true)
+  }
+
+  getEnableDeveloperMode(): boolean {
+    return this.get<boolean>(ConfigKeys.EnableDeveloperMode, false)
+  }
+
+  setEnableDeveloperMode(value: boolean) {
+    this.set(ConfigKeys.EnableDeveloperMode, value)
   }
 
   set(key: string, value: unknown, isNotify: boolean = false) {

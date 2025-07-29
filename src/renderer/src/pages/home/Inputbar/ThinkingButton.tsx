@@ -7,11 +7,18 @@ import {
 } from '@renderer/components/Icons/SVGIcon'
 import { useQuickPanel } from '@renderer/components/QuickPanel'
 import {
+  GEMINI_FLASH_MODEL_REGEX,
+  isDoubaoThinkingAutoModel,
   isSupportedReasoningEffortGrokModel,
+  isSupportedReasoningEffortPerplexityModel,
+  isSupportedThinkingTokenDoubaoModel,
   isSupportedThinkingTokenGeminiModel,
-  isSupportedThinkingTokenQwenModel
+  isSupportedThinkingTokenHunyuanModel,
+  isSupportedThinkingTokenQwenModel,
+  isSupportedThinkingTokenZhipuModel
 } from '@renderer/config/models'
 import { useAssistant } from '@renderer/hooks/useAssistant'
+import { getReasoningEffortOptionsLabel } from '@renderer/i18n/label'
 import { Assistant, Model, ReasoningEffortOptions } from '@renderer/types'
 import { Tooltip } from 'antd'
 import { FC, ReactElement, useCallback, useEffect, useImperativeHandle, useMemo } from 'react'
@@ -33,15 +40,21 @@ interface Props {
 // 模型类型到支持选项的映射表
 const MODEL_SUPPORTED_OPTIONS: Record<string, ThinkingOption[]> = {
   default: ['off', 'low', 'medium', 'high'],
-  grok: ['off', 'low', 'high'],
+  grok: ['low', 'high'],
   gemini: ['off', 'low', 'medium', 'high', 'auto'],
-  qwen: ['off', 'low', 'medium', 'high']
+  gemini_pro: ['low', 'medium', 'high', 'auto'],
+  qwen: ['off', 'low', 'medium', 'high'],
+  qwen_3235ba22b_thinking: ['low', 'medium', 'high'],
+  doubao: ['off', 'auto', 'high'],
+  hunyuan: ['off', 'auto'],
+  zhipu: ['off', 'auto'],
+  perplexity: ['low', 'medium', 'high']
 }
 
 // 选项转换映射表：当选项不支持时使用的替代选项
 const OPTION_FALLBACK: Record<ThinkingOption, ThinkingOption> = {
-  off: 'off',
-  low: 'low',
+  off: 'low', // off -> low (for Gemini Pro models)
+  low: 'high',
   medium: 'high', // medium -> high (for Grok models)
   high: 'high',
   auto: 'high' // auto -> high (for non-Gemini models)
@@ -54,7 +67,13 @@ const ThinkingButton: FC<Props> = ({ ref, model, assistant, ToolbarButton }): Re
 
   const isGrokModel = isSupportedReasoningEffortGrokModel(model)
   const isGeminiModel = isSupportedThinkingTokenGeminiModel(model)
+  const isGeminiFlashModel = GEMINI_FLASH_MODEL_REGEX.test(model.id)
   const isQwenModel = isSupportedThinkingTokenQwenModel(model)
+  const isQwen3235BA22BThinkingModel = model.id.includes('qwen3-235b-a22b-thinking')
+  const isDoubaoModel = isSupportedThinkingTokenDoubaoModel(model)
+  const isHunyuanModel = isSupportedThinkingTokenHunyuanModel(model)
+  const isPerplexityModel = isSupportedReasoningEffortPerplexityModel(model)
+  const isZhipuModel = isSupportedThinkingTokenZhipuModel(model)
 
   const currentReasoningEffort = useMemo(() => {
     return assistant.settings?.reasoning_effort || 'off'
@@ -62,16 +81,47 @@ const ThinkingButton: FC<Props> = ({ ref, model, assistant, ToolbarButton }): Re
 
   // 确定当前模型支持的选项类型
   const modelType = useMemo(() => {
-    if (isGeminiModel) return 'gemini'
+    if (isGeminiModel) {
+      if (isGeminiFlashModel) {
+        return 'gemini'
+      } else {
+        return 'gemini_pro'
+      }
+    }
     if (isGrokModel) return 'grok'
-    if (isQwenModel) return 'qwen'
+    if (isQwenModel) {
+      if (isQwen3235BA22BThinkingModel) {
+        return 'qwen_3235ba22b_thinking'
+      }
+      return 'qwen'
+    }
+    if (isDoubaoModel) return 'doubao'
+    if (isHunyuanModel) return 'hunyuan'
+    if (isPerplexityModel) return 'perplexity'
+    if (isZhipuModel) return 'zhipu'
     return 'default'
-  }, [isGeminiModel, isGrokModel, isQwenModel])
+  }, [
+    isGeminiModel,
+    isGrokModel,
+    isQwenModel,
+    isDoubaoModel,
+    isGeminiFlashModel,
+    isHunyuanModel,
+    isPerplexityModel,
+    isQwen3235BA22BThinkingModel,
+    isZhipuModel
+  ])
 
   // 获取当前模型支持的选项
   const supportedOptions = useMemo(() => {
+    if (modelType === 'doubao') {
+      if (isDoubaoThinkingAutoModel(model)) {
+        return ['off', 'auto', 'high'] as ThinkingOption[]
+      }
+      return ['off', 'high'] as ThinkingOption[]
+    }
     return MODEL_SUPPORTED_OPTIONS[modelType]
-  }, [modelType])
+  }, [model, modelType])
 
   // 检查当前设置是否与当前模型兼容
   useEffect(() => {
@@ -125,23 +175,21 @@ const ThinkingButton: FC<Props> = ({ ref, model, assistant, ToolbarButton }): Re
     [updateAssistantSettings]
   )
 
-  const baseOptions = useMemo(() => {
+  const panelItems = useMemo(() => {
     // 使用表中定义的选项创建UI选项
     return supportedOptions.map((option) => ({
       level: option,
-      label: t(`assistants.settings.reasoning_effort.${option === 'auto' ? 'default' : option}`),
+      label: getReasoningEffortOptionsLabel(option),
       description: '',
       icon: createThinkingIcon(option),
       isSelected: currentReasoningEffort === option,
       action: () => onThinkingChange(option)
     }))
-  }, [t, createThinkingIcon, currentReasoningEffort, supportedOptions, onThinkingChange])
-
-  const panelItems = baseOptions
+  }, [createThinkingIcon, currentReasoningEffort, supportedOptions, onThinkingChange])
 
   const openQuickPanel = useCallback(() => {
     quickPanel.open({
-      title: t('assistants.settings.reasoning_effort'),
+      title: t('assistants.settings.reasoning_effort.label'),
       list: panelItems,
       symbol: 'thinking'
     })
@@ -170,7 +218,7 @@ const ThinkingButton: FC<Props> = ({ ref, model, assistant, ToolbarButton }): Re
   }))
 
   return (
-    <Tooltip placement="top" title={t('assistants.settings.reasoning_effort')} arrow>
+    <Tooltip placement="top" title={t('assistants.settings.reasoning_effort.label')} mouseLeaveDelay={0} arrow>
       <ToolbarButton type="text" onClick={handleOpenQuickPanel}>
         {getThinkingIcon()}
       </ToolbarButton>

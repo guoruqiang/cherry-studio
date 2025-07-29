@@ -1,10 +1,14 @@
+import { loggerService } from '@logger'
 import { isMac } from '@renderer/config/constant'
 import { isLocalAi } from '@renderer/config/env'
 import { useTheme } from '@renderer/context/ThemeProvider'
 import db from '@renderer/databases'
 import i18n from '@renderer/i18n'
 import KnowledgeQueue from '@renderer/queue/KnowledgeQueue'
+import MemoryService from '@renderer/services/MemoryService'
 import { useAppDispatch } from '@renderer/store'
+import { useAppSelector } from '@renderer/store'
+import { selectMemoryConfig } from '@renderer/store/memory'
 import { setAvatar, setFilesPath, setResourcesPath, setUpdateState } from '@renderer/store/runtime'
 import { delay, runAsyncFunction } from '@renderer/utils'
 import { defaultLanguage } from '@shared/config/constant'
@@ -14,8 +18,10 @@ import { useEffect } from 'react'
 import { useDefaultModel } from './useAssistant'
 import useFullScreenNotice from './useFullScreenNotice'
 import { useRuntime } from './useRuntime'
-import { useSettings } from './useSettings'
+import { useNavbarPosition, useSettings } from './useSettings'
 import useUpdateHandler from './useUpdateHandler'
+
+const logger = loggerService.withContext('useAppInit')
 
 export function useAppInit() {
   const dispatch = useAppDispatch()
@@ -24,10 +30,24 @@ export function useAppInit() {
   const { setDefaultModel, setTopicNamingModel, setTranslateModel } = useDefaultModel()
   const avatar = useLiveQuery(() => db.settings.get('image://avatar'))
   const { theme } = useTheme()
+  const memoryConfig = useAppSelector(selectMemoryConfig)
+  const { isTopNavbar } = useNavbarPosition()
 
   useEffect(() => {
     document.getElementById('spinner')?.remove()
+    // eslint-disable-next-line no-restricted-syntax
     console.timeEnd('init')
+
+    // Initialize MemoryService after app is ready
+    MemoryService.getInstance()
+  }, [])
+
+  useEffect(() => {
+    window.api.getDataPathFromArgs().then((dataPath) => {
+      if (dataPath) {
+        window.navigate('/settings/data', { replace: true })
+      }
+    })
   }, [])
 
   useUpdateHandler()
@@ -66,13 +86,17 @@ export function useAppInit() {
     const transparentWindow = windowStyle === 'transparent' && isMac && !minappShow
 
     if (minappShow) {
-      window.root.style.background =
-        windowStyle === 'transparent' && isMac ? 'var(--color-background)' : 'var(--navbar-background)'
+      if (isTopNavbar) {
+        window.root.style.background = 'var(--navbar-background)'
+      } else {
+        window.root.style.background =
+          windowStyle === 'transparent' && isMac ? 'var(--color-background)' : 'var(--navbar-background)'
+      }
       return
     }
 
     window.root.style.background = transparentWindow ? 'var(--navbar-background-mac)' : 'var(--navbar-background)'
-  }, [windowStyle, minappShow, theme])
+  }, [windowStyle, minappShow, theme, isTopNavbar])
 
   useEffect(() => {
     if (isLocalAi) {
@@ -113,4 +137,12 @@ export function useAppInit() {
   useEffect(() => {
     // TODO: init data collection
   }, [enableDataCollection])
+
+  // Update memory service configuration when it changes
+  useEffect(() => {
+    const memoryService = MemoryService.getInstance()
+    memoryService.updateConfig().catch((error) => {
+      logger.error('Failed to update memory config:', error)
+    })
+  }, [memoryConfig])
 }

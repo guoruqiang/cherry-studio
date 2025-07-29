@@ -1,4 +1,5 @@
 import {
+  CheckOutlined,
   DeleteOutlined,
   EditOutlined,
   MinusCircleOutlined,
@@ -16,7 +17,7 @@ import { useAssistant, useAssistants } from '@renderer/hooks/useAssistant'
 import { useSettings } from '@renderer/hooks/useSettings'
 import { useTags } from '@renderer/hooks/useTags'
 import AssistantSettingsPopup from '@renderer/pages/settings/AssistantSettings'
-import { getDefaultModel, getDefaultTopic } from '@renderer/services/AssistantService'
+import { getDefaultModel } from '@renderer/services/AssistantService'
 import { EVENT_NAMES, EventEmitter } from '@renderer/services/EventService'
 import { Assistant, AssistantsSortType } from '@renderer/types'
 import { getLeadingEmoji, uuid } from '@renderer/utils'
@@ -24,7 +25,7 @@ import { hasTopicPendingRequests } from '@renderer/utils/queue'
 import { Dropdown, MenuProps } from 'antd'
 import { omit } from 'lodash'
 import { AlignJustify, Plus, Settings2, Tag, Tags } from 'lucide-react'
-import { FC, memo, startTransition, useCallback, useEffect, useMemo, useState } from 'react'
+import { FC, memo, useCallback, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import styled from 'styled-components'
 import * as tinyPinyin from 'tiny-pinyin'
@@ -39,7 +40,7 @@ interface AssistantItemProps {
   onDelete: (assistant: Assistant) => void
   onCreateDefaultAssistant: () => void
   addAgent: (agent: any) => void
-  addAssistant: (assistant: Assistant) => void
+  copyAssistant: (assistant: Assistant) => void
   onTagClick?: (tag: string) => void
   handleSortByChange?: (sortType: AssistantsSortType) => void
 }
@@ -51,7 +52,7 @@ const AssistantItem: FC<AssistantItemProps> = ({
   onSwitch,
   onDelete,
   addAgent,
-  addAssistant,
+  copyAssistant,
   handleSortByChange
 }) => {
   const { t } = useTranslation()
@@ -90,7 +91,7 @@ const AssistantItem: FC<AssistantItemProps> = ({
         assistants,
         updateAssistants,
         addAgent,
-        addAssistant,
+        copyAssistant,
         onSwitch,
         onDelete,
         removeAllTopics,
@@ -107,7 +108,7 @@ const AssistantItem: FC<AssistantItemProps> = ({
       assistants,
       updateAssistants,
       addAgent,
-      addAssistant,
+      copyAssistant,
       onSwitch,
       onDelete,
       removeAllTopics,
@@ -124,12 +125,8 @@ const AssistantItem: FC<AssistantItemProps> = ({
       if (topicPosition === 'left') {
         EventEmitter.emit(EVENT_NAMES.SWITCH_TOPIC_SIDEBAR)
       }
-      onSwitch(assistant)
-    } else {
-      startTransition(() => {
-        onSwitch(assistant)
-      })
     }
+    onSwitch(assistant)
   }, [clickAssistantToShowTopic, onSwitch, assistant, topicPosition])
 
   const assistantName = useMemo(() => assistant.name || t('chat.default.name'), [assistant.name, t])
@@ -184,11 +181,10 @@ const handleTagOperation = (
   assistants: Assistant[],
   updateAssistants: (assistants: Assistant[]) => void
 ) => {
-  if (assistant.tags?.includes(tag)) {
-    updateAssistants(assistants.map((a) => (a.id === assistant.id ? { ...a, tags: [] } : a)))
-  } else {
-    updateAssistants(assistants.map((a) => (a.id === assistant.id ? { ...a, tags: [tag] } : a)))
-  }
+  const removeTag = () => updateAssistants(assistants.map((a) => (a.id === assistant.id ? { ...a, tags: [] } : a)))
+  const addTag = () => updateAssistants(assistants.map((a) => (a.id === assistant.id ? { ...a, tags: [tag] } : a)))
+  const hasTag = assistant.tags?.includes(tag)
+  hasTag ? removeTag() : addTag()
 }
 
 // 提取创建菜单项的函数
@@ -202,8 +198,7 @@ const createTagMenuItems = (
   const items: MenuProps['items'] = [
     ...allTags.map((tag) => ({
       label: tag,
-      icon: assistant.tags?.includes(tag) ? <DeleteOutlined size={14} /> : <Tag size={12} />,
-      danger: assistant.tags?.includes(tag),
+      icon: assistant.tags?.includes(tag) ? <CheckOutlined size={14} /> : <Tag size={12} />,
       key: `all-tag-${tag}`,
       onClick: () => handleTagOperation(tag, assistant, assistants, updateAssistants)
     }))
@@ -251,7 +246,7 @@ function getMenuItems({
   assistants,
   updateAssistants,
   addAgent,
-  addAssistant,
+  copyAssistant,
   onSwitch,
   onDelete,
   removeAllTopics,
@@ -273,9 +268,10 @@ function getMenuItems({
       key: 'duplicate',
       icon: <CopyIcon />,
       onClick: async () => {
-        const _assistant: Assistant = { ...assistant, id: uuid(), topics: [getDefaultTopic(assistant.id)] }
-        addAssistant(_assistant)
-        onSwitch(_assistant)
+        const _assistant = copyAssistant(assistant)
+        if (_assistant) {
+          onSwitch(_assistant)
+        }
       }
     },
     {
@@ -395,6 +391,7 @@ const Container = styled.div`
   }
   &.active {
     background-color: var(--color-list-item);
+    box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
   }
 `
 

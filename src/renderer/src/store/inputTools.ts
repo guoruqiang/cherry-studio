@@ -11,16 +11,13 @@ export const DEFAULT_TOOL_ORDER: ToolOrder = {
     'attachment',
     'thinking',
     'web_search',
+    'url_context',
     'knowledge_base',
     'mcp_tools',
     'generate_image',
-    'mention_models',
-    'quick_phrases',
-    'clear_topic',
-    'toggle_expand',
-    'new_context'
+    'mention_models'
   ],
-  hidden: []
+  hidden: ['quick_phrases', 'clear_topic', 'toggle_expand', 'new_context']
 }
 
 export type InputToolsState = {
@@ -30,7 +27,7 @@ export type InputToolsState = {
 
 const initialState: InputToolsState = {
   toolOrder: DEFAULT_TOOL_ORDER,
-  isCollapsed: false
+  isCollapsed: true
 }
 
 const inputToolsSlice = createSlice({

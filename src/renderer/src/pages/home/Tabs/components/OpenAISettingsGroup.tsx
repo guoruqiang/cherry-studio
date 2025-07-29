@@ -1,14 +1,14 @@
+import Selector from '@renderer/components/Selector'
 import { SettingDivider, SettingRow } from '@renderer/pages/settings'
 import { CollapsibleSettingGroup } from '@renderer/pages/settings/SettingGroup'
 import { RootState, useAppDispatch } from '@renderer/store'
 import { setOpenAIServiceTier, setOpenAISummaryText } from '@renderer/store/settings'
 import { OpenAIServiceTier, OpenAISummaryText } from '@renderer/types'
-import { Select, Tooltip } from 'antd'
+import { Tooltip } from 'antd'
 import { CircleHelp } from 'lucide-react'
 import { FC, useCallback, useEffect, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useSelector } from 'react-redux'
-import styled from 'styled-components'
 
 interface Props {
   isOpenAIReasoning: boolean
@@ -102,13 +102,11 @@ const OpenAISettingsGroup: FC<Props> = ({
               <CircleHelp size={14} style={{ marginLeft: 4 }} color="var(--color-text-2)" />
             </Tooltip>
           </SettingRowTitleSmall>
-          <StyledSelect
+          <Selector
             value={serviceTierMode}
-            style={{ width: 135 }}
             onChange={(value) => {
               setServiceTierMode(value as OpenAIServiceTier)
             }}
-            size="small"
             options={serviceTierOptions}
           />
         </SettingRow>
@@ -122,29 +120,20 @@ const OpenAISettingsGroup: FC<Props> = ({
                   <CircleHelp size={14} style={{ marginLeft: 4 }} color="var(--color-text-2)" />
                 </Tooltip>
               </SettingRowTitleSmall>
-              <StyledSelect
+              <Selector
                 value={summaryText}
-                style={{ width: 135 }}
                 onChange={(value) => {
                   setSummaryText(value as OpenAISummaryText)
                 }}
-                size="small"
                 options={summaryTextOptions}
               />
             </SettingRow>
           </>
         )}
       </SettingGroup>
+      <SettingDivider />
     </CollapsibleSettingGroup>
   )
 }
-
-const StyledSelect = styled(Select)`
-  .ant-select-selector {
-    border-radius: 15px !important;
-    padding: 4px 10px !important;
-    height: 26px !important;
-  }
-`
 
 export default OpenAISettingsGroup

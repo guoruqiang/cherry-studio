@@ -32,6 +32,12 @@ yarn install
 or yarn install --mode=update-lockfile
 ```
 
+### ENV
+
+```bash
+copy .env.example .env
+```
+
 ### Start
 
 ```bash

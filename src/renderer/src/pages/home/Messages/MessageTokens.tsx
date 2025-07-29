@@ -11,11 +11,45 @@ interface MessageTokensProps {
   isLastMessage?: boolean
 }
 
-const MessgeTokens: React.FC<MessageTokensProps> = ({ message }) => {
+const MessageTokens: React.FC<MessageTokensProps> = ({ message }) => {
   const { showTokens } = useSettings()
   // const { generating } = useRuntime()
   const locateMessage = () => {
     EventEmitter.emit(EVENT_NAMES.LOCATE_MESSAGE + ':' + message.id, false)
+  }
+
+  const getPrice = () => {
+    const inputTokens = message?.usage?.prompt_tokens ?? 0
+    const outputTokens = message?.usage?.completion_tokens ?? 0
+    const model = message.model
+
+    // For OpenRouter, use the cost directly from usage if available
+    if (model?.provider === 'openrouter' && message?.usage?.cost !== undefined) {
+      return message.usage.cost
+    }
+
+    if (!model || model.pricing?.input_per_million_tokens === 0 || model.pricing?.output_per_million_tokens === 0) {
+      return 0
+    }
+    return (
+      (inputTokens * (model.pricing?.input_per_million_tokens ?? 0) +
+        outputTokens * (model.pricing?.output_per_million_tokens ?? 0)) /
+      1000000
+    )
+  }
+
+  const getPriceString = () => {
+    const price = getPrice()
+    if (price === 0) {
+      return ''
+    }
+    // For OpenRouter, always show cost even without pricing config
+    const shouldShowCost = message.model?.provider === 'openrouter' || price > 0
+    if (!shouldShowCost) {
+      return ''
+    }
+    const currencySymbol = message.model?.pricing?.currencySymbol || '$'
+    return `| ${t('models.price.cost')}: ${currencySymbol}${price.toFixed(6)}`
   }
 
   if (!message.usage) {
@@ -49,19 +83,22 @@ const MessgeTokens: React.FC<MessageTokensProps> = ({ message }) => {
         <span>{message?.usage?.total_tokens}</span>
         <span>↑{message?.usage?.prompt_tokens}</span>
         <span>↓{message?.usage?.completion_tokens}</span>
+        <span>{getPriceString()}</span>
       </span>
     )
 
     return (
-      <MessageMetadata className="message-tokens" onClick={locateMessage}>
-        {hasMetrics ? (
-          <Popover content={metrixs} placement="top" trigger="hover" styles={{ root: { fontSize: 11 } }}>
-            {showTokens && tokensInfo}
-          </Popover>
-        ) : (
-          tokensInfo
-        )}
-      </MessageMetadata>
+      showTokens && (
+        <MessageMetadata className="message-tokens" onClick={locateMessage}>
+          {hasMetrics ? (
+            <Popover content={metrixs} placement="top" trigger="hover" styles={{ root: { fontSize: 11 } }}>
+              {tokensInfo}
+            </Popover>
+          ) : (
+            tokensInfo
+          )}
+        </MessageMetadata>
+      )
     )
   }
 
@@ -69,20 +106,15 @@ const MessgeTokens: React.FC<MessageTokensProps> = ({ message }) => {
 }
 
 const MessageMetadata = styled.div`
-  font-size: 11px;
-  color: var(--color-text-2);
+  font-size: 10px;
+  color: var(--color-text-3);
   user-select: text;
-  margin: 2px 0;
   cursor: pointer;
   text-align: right;
 
-  .tokens {
-    display: block;
-
-    span {
-      padding: 0 2px;
-    }
+  .tokens span {
+    padding: 0 2px;
   }
 `
 
-export default MessgeTokens
+export default MessageTokens

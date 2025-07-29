@@ -1,3 +1,5 @@
+import { loggerService } from '@logger'
+import ContextMenu from '@renderer/components/ContextMenu'
 import SvgSpinners180Ring from '@renderer/components/Icons/SvgSpinners180Ring'
 import Scrollbar from '@renderer/components/Scrollbar'
 import { LOAD_MORE_COUNT } from '@renderer/config/constant'
@@ -16,9 +18,9 @@ import { estimateHistoryTokens } from '@renderer/services/TokenService'
 import store, { useAppDispatch } from '@renderer/store'
 import { messageBlocksSelectors, updateOneBlock } from '@renderer/store/messageBlock'
 import { newMessagesActions } from '@renderer/store/newMessage'
-import { saveMessageAndBlocksToDB } from '@renderer/store/thunk/messageThunk'
+import { saveMessageAndBlocksToDB, updateMessageAndBlocksThunk } from '@renderer/store/thunk/messageThunk'
 import type { Assistant, Topic } from '@renderer/types'
-import { type Message, MessageBlockType } from '@renderer/types/newMessage'
+import { type Message, MessageBlock, MessageBlockType } from '@renderer/types/newMessage'
 import {
   captureScrollableDivAsBlob,
   captureScrollableDivAsDataURL,
@@ -47,6 +49,8 @@ interface MessagesProps {
   onComponentUpdate?(): void
   onFirstUpdate?(): void
 }
+
+const logger = loggerService.withContext('Messages')
 
 const Messages: React.FC<MessagesProps> = ({ assistant, topic, setActiveTopic, onComponentUpdate, onFirstUpdate }) => {
   const { containerRef: scrollContainerRef, handleScroll: handleScrollPosition } = useScrollPosition(
@@ -86,13 +90,12 @@ const Messages: React.FC<MessagesProps> = ({ assistant, topic, setActiveTopic, o
     setHasMore(messages.length > displayCount)
   }, [messages, displayCount])
 
+  // NOTE: 如果设置为平滑滚动会导致滚动条无法跟随生成的新消息保持在底部位置
   const scrollToBottom = useCallback(() => {
     if (scrollContainerRef.current) {
       requestAnimationFrame(() => {
         if (scrollContainerRef.current) {
-          scrollContainerRef.current.scrollTo({
-            top: scrollContainerRef.current.scrollHeight
-          })
+          scrollContainerRef.current.scrollTo({ top: 0 })
         }
       })
     }
@@ -176,7 +179,7 @@ const Messages: React.FC<MessagesProps> = ({ assistant, topic, setActiveTopic, o
         const currentMessages = messagesRef.current
 
         if (index < 0 || index > currentMessages.length) {
-          console.error(`[NEW_BRANCH] Invalid branch index: ${index}`)
+          logger.error(`[NEW_BRANCH] Invalid branch index: ${index}`)
           return
         }
 
@@ -195,7 +198,7 @@ const Messages: React.FC<MessagesProps> = ({ assistant, topic, setActiveTopic, o
           // Optional: Handle cloning failure (e.g., show an error message)
           // You might want to remove the added topic if cloning fails
           // removeTopic(newTopic.id); // Assuming you have a removeTopic function
-          console.error(`[NEW_BRANCH] Failed to create topic branch for topic ${newTopic.id}`)
+          logger.error(`[NEW_BRANCH] Failed to create topic branch for topic ${newTopic.id}`)
           window.message.error(t('message.branch.error')) // Example error message
         }
       }),
@@ -210,17 +213,28 @@ const Messages: React.FC<MessagesProps> = ({ assistant, topic, setActiveTopic, o
           if (msgBlock && isTextLikeBlock(msgBlock) && msgBlock.type !== MessageBlockType.ERROR) {
             try {
               const updatedRaw = updateCodeBlock(msgBlock.content, codeBlockId, newContent)
+              const updatedBlock: MessageBlock = {
+                ...msgBlock,
+                content: updatedRaw,
+                updatedAt: new Date().toISOString()
+              }
+
               dispatch(updateOneBlock({ id: msgBlockId, changes: { content: updatedRaw } }))
+              await dispatch(updateMessageAndBlocksThunk(topic.id, null, [updatedBlock]))
+
               window.message.success({ content: t('code_block.edit.save.success'), key: 'save-code' })
             } catch (error) {
-              console.error(`Failed to save code block ${codeBlockId} content to message block ${msgBlockId}:`, error)
-              window.message.error({ content: t('code_block.edit.save.failed'), key: 'save-code-failed' })
+              logger.error(
+                `Failed to save code block ${codeBlockId} content to message block ${msgBlockId}:`,
+                error as Error
+              )
+              window.message.error({ content: t('code_block.edit.save.failed.label'), key: 'save-code-failed' })
             }
           } else {
-            console.error(
+            logger.error(
               `Failed to save code block ${codeBlockId} content to message block ${msgBlockId}: no such message block or the block doesn't have a content field`
             )
-            window.message.error({ content: t('code_block.edit.save.failed'), key: 'save-code-failed' })
+            window.message.error({ content: t('code_block.edit.save.failed.label'), key: 'save-code-failed' })
           }
         }
       )
@@ -266,12 +280,12 @@ const Messages: React.FC<MessagesProps> = ({ assistant, topic, setActiveTopic, o
   }, [onComponentUpdate])
 
   const groupedMessages = useMemo(() => Object.entries(getGroupedMessages(displayMessages)), [displayMessages])
+
   return (
     <MessagesContainer
       id="messages"
       className="messages-container"
       ref={scrollContainerRef}
-      style={{ position: 'relative', paddingTop: showPrompt ? 10 : 0 }}
       key={assistant.id}
       onScroll={handleScrollPosition}>
       <NarrowLayout style={{ display: 'flex', flexDirection: 'column-reverse' }}>
@@ -283,23 +297,25 @@ const Messages: React.FC<MessagesProps> = ({ assistant, topic, setActiveTopic, o
           scrollableTarget="messages"
           inverse
           style={{ overflow: 'visible' }}>
-          <ScrollContainer>
-            {groupedMessages.map(([key, groupMessages]) => (
-              <MessageGroup
-                key={key}
-                messages={groupMessages}
-                topic={topic}
-                hidePresetMessages={assistant.settings?.hideMessages}
-                registerMessageElement={registerMessageElement}
-              />
-            ))}
-            {isLoadingMore && (
-              <LoaderContainer>
-                <SvgSpinners180Ring color="var(--color-text-2)" />
-              </LoaderContainer>
-            )}
-          </ScrollContainer>
+          <ContextMenu>
+            <ScrollContainer>
+              {groupedMessages.map(([key, groupMessages]) => (
+                <MessageGroup
+                  key={key}
+                  messages={groupMessages}
+                  topic={topic}
+                  registerMessageElement={registerMessageElement}
+                />
+              ))}
+              {isLoadingMore && (
+                <LoaderContainer>
+                  <SvgSpinners180Ring color="var(--color-text-2)" />
+                </LoaderContainer>
+              )}
+            </ScrollContainer>
+          </ContextMenu>
         </InfiniteScroll>
+
         {showPrompt && <Prompt assistant={assistant} key={assistant.prompt} topic={topic} />}
       </NarrowLayout>
       {messageNavigation === 'anchor' && <MessageAnchorLine messages={displayMessages} />}
@@ -362,6 +378,10 @@ const LoaderContainer = styled.div`
 const ScrollContainer = styled.div`
   display: flex;
   flex-direction: column-reverse;
+  padding: 10px 10px 20px;
+  .multi-select-mode & {
+    padding-bottom: 60px;
+  }
 `
 
 interface ContainerProps {
@@ -371,11 +391,9 @@ interface ContainerProps {
 const MessagesContainer = styled(Scrollbar)<ContainerProps>`
   display: flex;
   flex-direction: column-reverse;
-  padding: 10px 0 20px;
   overflow-x: hidden;
-  background-color: var(--color-background);
   z-index: 1;
-  margin-right: 2px;
+  position: relative;
 `
 
 export default Messages

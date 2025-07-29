@@ -2,11 +2,11 @@
 import './ThemeService'
 
 import { is } from '@electron-toolkit/utils'
+import { loggerService } from '@logger'
 import { isDev, isLinux, isMac, isWin } from '@main/constant'
 import { getFilesDir } from '@main/utils/file'
 import { IpcChannel } from '@shared/IpcChannel'
-import { app, BrowserWindow, nativeTheme, shell } from 'electron'
-import Logger from 'electron-log'
+import { app, BrowserWindow, nativeTheme, screen, shell } from 'electron'
 import windowStateKeeper from 'electron-window-state'
 import { join } from 'path'
 
@@ -15,6 +15,12 @@ import { titleBarOverlayDark, titleBarOverlayLight } from '../config'
 import { configManager } from './ConfigManager'
 import { contextMenu } from './ContextMenu'
 import { initSessionUserAgent } from './WebviewService'
+
+const DEFAULT_MINIWINDOW_WIDTH = 550
+const DEFAULT_MINIWINDOW_HEIGHT = 400
+
+// const logger = loggerService.withContext('WindowService')
+const logger = loggerService.withContext('WindowService')
 
 export class WindowService {
   private static instance: WindowService | null = null
@@ -25,6 +31,11 @@ export class WindowService {
   //to restore the focus status when miniWindow hides
   private wasMainWindowFocused: boolean = false
   private lastRendererProcessCrashTime: number = 0
+
+  private miniWindowSize: { width: number; height: number } = {
+    width: DEFAULT_MINIWINDOW_WIDTH,
+    height: DEFAULT_MINIWINDOW_HEIGHT
+  }
 
   public static getInstance(): WindowService {
     if (!WindowService.instance) {
@@ -41,8 +52,8 @@ export class WindowService {
     }
 
     const mainWindowState = windowStateKeeper({
-      defaultWidth: 1080,
-      defaultHeight: 670,
+      defaultWidth: 960,
+      defaultHeight: 600,
       fullScreen: false,
       maximize: false
     })
@@ -52,18 +63,18 @@ export class WindowService {
       y: mainWindowState.y,
       width: mainWindowState.width,
       height: mainWindowState.height,
-      minWidth: 1080,
+      minWidth: 960,
       minHeight: 600,
       show: false,
       autoHideMenuBar: true,
-      transparent: isMac,
+      transparent: false,
       vibrancy: 'sidebar',
       visualEffectState: 'active',
       titleBarStyle: 'hidden',
       titleBarOverlay: nativeTheme.shouldUseDarkColors ? titleBarOverlayDark : titleBarOverlayLight,
       backgroundColor: isMac ? undefined : nativeTheme.shouldUseDarkColors ? '#181818' : '#FFFFFF',
       darkTheme: nativeTheme.shouldUseDarkColors,
-      trafficLightPosition: { x: 8, y: 12 },
+      trafficLightPosition: { x: 8, y: 13 },
       ...(isLinux ? { icon } : {}),
       webPreferences: {
         preload: join(__dirname, '../preload/index.js'),
@@ -95,6 +106,7 @@ export class WindowService {
 
     this.setupMaximize(mainWindow, mainWindowState.isMaximized)
     this.setupContextMenu(mainWindow)
+    this.setupSpellCheck(mainWindow)
     this.setupWindowEvents(mainWindow)
     this.setupWebContentsHandlers(mainWindow)
     this.setupWindowLifecycleEvents(mainWindow)
@@ -102,9 +114,21 @@ export class WindowService {
     this.loadMainWindowContent(mainWindow)
   }
 
+  private setupSpellCheck(mainWindow: BrowserWindow) {
+    const enableSpellCheck = configManager.get('enableSpellCheck', false)
+    if (enableSpellCheck) {
+      try {
+        const spellCheckLanguages = configManager.get('spellCheckLanguages', []) as string[]
+        spellCheckLanguages.length > 0 && mainWindow.webContents.session.setSpellCheckerLanguages(spellCheckLanguages)
+      } catch (error) {
+        logger.error('Failed to set spell check languages:', error as Error)
+      }
+    }
+  }
+
   private setupMainWindowMonitor(mainWindow: BrowserWindow) {
     mainWindow.webContents.on('render-process-gone', (_, details) => {
-      Logger.error(`Renderer process crashed with: ${JSON.stringify(details)}`)
+      logger.error(`Renderer process crashed with: ${JSON.stringify(details)}`)
       const currentTime = Date.now()
       const lastCrashTime = this.lastRendererProcessCrashTime
       this.lastRendererProcessCrashTime = currentTime
@@ -115,12 +139,6 @@ export class WindowService {
         // 如果小于1分钟，则退出应用, 可能是连续crash，需要退出应用
         app.exit(1)
       }
-    })
-
-    mainWindow.webContents.on('unresponsive', () => {
-      // 在升级到electron 34后，可以获取具体js stack trace,目前只打个日志监控下
-      // https://www.electronjs.org/blog/electron-34-0#unresponsive-renderer-javascript-call-stacks
-      Logger.error('Renderer process unresponsive')
     })
   }
 
@@ -136,9 +154,10 @@ export class WindowService {
   }
 
   private setupContextMenu(mainWindow: BrowserWindow) {
-    contextMenu.contextMenu(mainWindow)
-    app.on('browser-window-created', (_, win) => {
-      contextMenu.contextMenu(win)
+    contextMenu.contextMenu(mainWindow.webContents)
+    // setup context menu for all webviews like miniapp
+    app.on('web-contents-created', (_, webContents) => {
+      contextMenu.contextMenu(webContents)
     })
 
     // Dangerous API
@@ -256,7 +275,7 @@ export class WindowService {
         const fileName = url.replace('http://file/', '')
         const storageDir = getFilesDir()
         const filePath = storageDir + '/' + fileName
-        shell.openPath(filePath).catch((err) => Logger.error('Failed to open file:', err))
+        shell.openPath(filePath).catch((err) => logger.error('Failed to open file:', err))
       } else {
         shell.openExternal(details.url)
       }
@@ -324,7 +343,9 @@ export class WindowService {
        * mac: 任何情况都会到这里，因此需要单独处理mac
        */
 
-      event.preventDefault()
+      if (!mainWindow.isFullScreen()) {
+        event.preventDefault()
+      }
 
       mainWindow.hide()
 
@@ -418,8 +439,8 @@ export class WindowService {
 
   public createMiniWindow(isPreload: boolean = false): BrowserWindow {
     this.miniWindow = new BrowserWindow({
-      width: 550,
-      height: 400,
+      width: this.miniWindowSize.width,
+      height: this.miniWindowSize.height,
       minWidth: 350,
       minHeight: 380,
       maxWidth: 1024,
@@ -429,13 +450,12 @@ export class WindowService {
       transparent: isMac,
       vibrancy: 'under-window',
       visualEffectState: 'followWindow',
-      center: true,
       frame: false,
       alwaysOnTop: true,
-      resizable: true,
       useContentSize: true,
       ...(isMac ? { type: 'panel' } : {}),
       skipTaskbar: true,
+      resizable: true,
       minimizable: false,
       maximizable: false,
       fullscreenable: false,
@@ -443,8 +463,7 @@ export class WindowService {
         preload: join(__dirname, '../preload/index.js'),
         sandbox: false,
         webSecurity: false,
-        webviewTag: true,
-        backgroundThrottling: false
+        webviewTag: true
       }
     })
 
@@ -478,6 +497,13 @@ export class WindowService {
       this.miniWindow?.webContents.send(IpcChannel.HideMiniWindow)
     })
 
+    this.miniWindow.on('resized', () => {
+      this.miniWindowSize = this.miniWindow?.getBounds() || {
+        width: DEFAULT_MINIWINDOW_WIDTH,
+        height: DEFAULT_MINIWINDOW_HEIGHT
+      }
+    })
+
     this.miniWindow.on('show', () => {
       this.miniWindow?.webContents.send(IpcChannel.ShowMiniWindow)
     })
@@ -501,10 +527,48 @@ export class WindowService {
     if (this.miniWindow && !this.miniWindow.isDestroyed()) {
       this.wasMainWindowFocused = this.mainWindow?.isFocused() || false
 
-      if (this.miniWindow.isMinimized()) {
-        this.miniWindow.restore()
+      // [Windows] hacky fix
+      // the window is minimized only when in Windows platform
+      // because it's a workround for Windows, see `hideMiniWindow()`
+      if (this.miniWindow?.isMinimized()) {
+        // don't let the window being seen before we finish adusting the position across screens
+        this.miniWindow?.setOpacity(0)
+        // DO NOT use `restore()` here, Electron has the bug with screens of different scale factor
+        // We have to use `show()` here, then set the position and bounds
+        this.miniWindow?.show()
       }
-      this.miniWindow.show()
+
+      const miniWindowBounds = this.miniWindow.getBounds()
+
+      // Check if miniWindow is on the same screen as mouse cursor
+      const cursorDisplay = screen.getDisplayNearestPoint(screen.getCursorScreenPoint())
+      const miniWindowDisplay = screen.getDisplayNearestPoint(miniWindowBounds)
+
+      // Show the miniWindow on the cursor's screen center
+      // If miniWindow is not on the same screen as cursor, move it to cursor's screen center
+      if (cursorDisplay.id !== miniWindowDisplay.id) {
+        const workArea = cursorDisplay.bounds
+
+        // use remembered size to avoid the bug of Electron with screens of different scale factor
+        const miniWindowWidth = this.miniWindowSize.width
+        const miniWindowHeight = this.miniWindowSize.height
+
+        // move to the center of the cursor's screen
+        const miniWindowX = Math.round(workArea.x + (workArea.width - miniWindowWidth) / 2)
+        const miniWindowY = Math.round(workArea.y + (workArea.height - miniWindowHeight) / 2)
+
+        this.miniWindow.setPosition(miniWindowX, miniWindowY, false)
+        this.miniWindow.setBounds({
+          x: miniWindowX,
+          y: miniWindowY,
+          width: miniWindowWidth,
+          height: miniWindowHeight
+        })
+      }
+
+      this.miniWindow?.setOpacity(1)
+      this.miniWindow?.show()
+
       return
     }
 
@@ -512,20 +576,26 @@ export class WindowService {
   }
 
   public hideMiniWindow() {
-    //hacky-fix:[mac/win] previous window(not self-app) should be focused again after miniWindow hide
+    if (!this.miniWindow || this.miniWindow.isDestroyed()) {
+      return
+    }
+
+    //[macOs/Windows] hacky fix
+    // previous window(not self-app) should be focused again after miniWindow hide
+    // this workaround is to make previous window focused again after miniWindow hide
     if (isWin) {
-      this.miniWindow?.minimize()
-      this.miniWindow?.hide()
+      this.miniWindow.setOpacity(0) // don't show the minimizing animation
+      this.miniWindow.minimize()
       return
     } else if (isMac) {
-      this.miniWindow?.hide()
+      this.miniWindow.hide()
       if (!this.wasMainWindowFocused) {
         app.hide()
       }
       return
     }
 
-    this.miniWindow?.hide()
+    this.miniWindow.hide()
   }
 
   public closeMiniWindow() {
@@ -543,6 +613,25 @@ export class WindowService {
 
   public setPinMiniWindow(isPinned) {
     this.isPinnedMiniWindow = isPinned
+  }
+
+  /**
+   * 引用文本到主窗口
+   * @param text 原始文本（未格式化）
+   */
+  public quoteToMainWindow(text: string): void {
+    try {
+      this.showMainWindow()
+
+      const mainWindow = this.getMainWindow()
+      if (mainWindow && !mainWindow.isDestroyed()) {
+        setTimeout(() => {
+          mainWindow.webContents.send(IpcChannel.App_QuoteToMain, text)
+        }, 100)
+      }
+    } catch (error) {
+      logger.error('Failed to quote to main window:', error as Error)
+    }
   }
 }
 

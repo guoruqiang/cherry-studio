@@ -1,15 +1,21 @@
+// don't reorder this file, it's used to initialize the app data dir and
+// other which should be run before the main process is ready
+// eslint-disable-next-line
+import './bootstrap'
+
 import '@main/config'
 
+import { loggerService } from '@logger'
 import { electronApp, optimizer } from '@electron-toolkit/utils'
 import { replaceDevtoolsFont } from '@main/utils/windowUtil'
 import { app } from 'electron'
 import installExtension, { REACT_DEVELOPER_TOOLS, REDUX_DEVTOOLS } from 'electron-devtools-installer'
-import Logger from 'electron-log'
 
-import { isDev, isWin } from './constant'
+import { isDev, isLinux, isWin } from './constant'
 import { registerIpc } from './ipc'
 import { configManager } from './services/ConfigManager'
 import mcpService from './services/MCPService'
+import { nodeTraceService } from './services/NodeTraceService'
 import {
   CHERRY_STUDIO_PROTOCOL,
   handleProtocolUrl,
@@ -20,9 +26,17 @@ import selectionService, { initSelectionService } from './services/SelectionServ
 import { registerShortcuts } from './services/ShortcutService'
 import { TrayService } from './services/TrayService'
 import { windowService } from './services/WindowService'
-import { setUserDataDir } from './utils/file'
+import process from 'node:process'
 
-Logger.initialize()
+const logger = loggerService.withContext('MainEntry')
+
+/**
+ * Disable hardware acceleration if setting is enabled
+ */
+const disableHardwareAcceleration = configManager.getDisableHardwareAcceleration()
+if (disableHardwareAcceleration) {
+  app.disableHardwareAcceleration()
+}
 
 /**
  * Disable chromium's window animations
@@ -34,16 +48,44 @@ if (isWin) {
   app.commandLine.appendSwitch('wm-window-animations-disabled')
 }
 
+/**
+ * Enable GlobalShortcutsPortal for Linux Wayland Protocol
+ * see: https://www.electronjs.org/docs/latest/api/global-shortcut
+ */
+if (isLinux && process.env.XDG_SESSION_TYPE === 'wayland') {
+  app.commandLine.appendSwitch('enable-features', 'GlobalShortcutsPortal')
+}
+
+// Enable features for unresponsive renderer js call stacks
+app.commandLine.appendSwitch('enable-features', 'DocumentPolicyIncludeJSCallStacksInCrashReports')
+app.on('web-contents-created', (_, webContents) => {
+  webContents.session.webRequest.onHeadersReceived((details, callback) => {
+    callback({
+      responseHeaders: {
+        ...details.responseHeaders,
+        'Document-Policy': ['include-js-call-stacks-in-crash-reports']
+      }
+    })
+  })
+
+  webContents.on('unresponsive', async () => {
+    // Interrupt execution and collect call stack from unresponsive renderer
+    logger.error('Renderer unresponsive start')
+    const callStack = await webContents.mainFrame.collectJavaScriptCallStack()
+    logger.error(`Renderer unresponsive js call stack\n ${callStack}`)
+  })
+})
+
 // in production mode, handle uncaught exception and unhandled rejection globally
 if (!isDev) {
   // handle uncaught exception
   process.on('uncaughtException', (error) => {
-    Logger.error('Uncaught Exception:', error)
+    logger.error('Uncaught Exception:', error)
   })
 
   // handle unhandled rejection
   process.on('unhandledRejection', (reason, promise) => {
-    Logger.error('Unhandled Rejection at:', promise, 'reason:', reason)
+    logger.error(`Unhandled Rejection at: ${promise} reason: ${reason}`)
   })
 }
 
@@ -52,9 +94,6 @@ if (!app.requestSingleInstanceLock()) {
   app.quit()
   process.exit(0)
 } else {
-  // Portable dir must be setup before app ready
-  setUserDataDir()
-
   // This method will be called when Electron has finished
   // initialization and is ready to create browser windows.
   // Some APIs can only be used after this event occurs.
@@ -71,6 +110,8 @@ if (!app.requestSingleInstanceLock()) {
 
     const mainWindow = windowService.createMainWindow()
     new TrayService()
+
+    nodeTraceService.init()
 
     app.on('activate', function () {
       const mainWindow = windowService.getMainWindow()
@@ -92,8 +133,8 @@ if (!app.requestSingleInstanceLock()) {
 
     if (isDev) {
       installExtension([REDUX_DEVTOOLS, REACT_DEVELOPER_TOOLS])
-        .then((name) => console.log(`Added Extension:  ${name}`))
-        .catch((err) => console.log('An error occurred: ', err))
+        .then((name) => logger.info(`Added Extension:  ${name}`))
+        .catch((err) => logger.error('An error occurred: ', err))
     }
 
     //start selection assistant service
@@ -103,10 +144,19 @@ if (!app.requestSingleInstanceLock()) {
   registerProtocolClient(app)
 
   // macOS specific: handle protocol when app is already running
+
   app.on('open-url', (event, url) => {
     event.preventDefault()
     handleProtocolUrl(url)
   })
+
+  const handleOpenUrl = (args: string[]) => {
+    const url = args.find((arg) => arg.startsWith(CHERRY_STUDIO_PROTOCOL + '://'))
+    if (url) handleProtocolUrl(url)
+  }
+
+  // for windows to start with url
+  handleOpenUrl(process.argv)
 
   // Listen for second instance
   app.on('second-instance', (_event, argv) => {
@@ -114,8 +164,7 @@ if (!app.requestSingleInstanceLock()) {
 
     // Protocol handler for Windows/Linux
     // The commandLine is an array of strings where the last item might be the URL
-    const url = argv.find((arg) => arg.startsWith(CHERRY_STUDIO_PROTOCOL + '://'))
-    if (url) handleProtocolUrl(url)
+    handleOpenUrl(argv)
   })
 
   app.on('browser-window-created', (_, window) => {
@@ -132,12 +181,14 @@ if (!app.requestSingleInstanceLock()) {
   })
 
   app.on('will-quit', async () => {
-    // event.preventDefault()
+    // 简单的资源清理，不阻塞退出流程
     try {
       await mcpService.cleanup()
     } catch (error) {
-      Logger.error('Error cleaning up MCP service:', error)
+      logger.warn('Error cleaning up MCP service:', error as Error)
     }
+    // finish the logger
+    logger.finish()
   })
 
   // In this file you can include the rest of your app"s specific main process

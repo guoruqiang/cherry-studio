@@ -4,8 +4,8 @@ import { useTheme } from '@renderer/context/ThemeProvider'
 import { useMinappPopup } from '@renderer/hooks/useMinappPopup'
 import { RootState, useAppDispatch } from '@renderer/store'
 import { setJoplinExportReasoning, setJoplinToken, setJoplinUrl } from '@renderer/store/settings'
-import { Button, Switch, Tooltip } from 'antd'
-import Input from 'antd/es/input/Input'
+import { Button, Space, Switch, Tooltip } from 'antd'
+import { Input } from 'antd'
 import { FC } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useSelector } from 'react-redux'
@@ -106,14 +106,16 @@ const JoplinSettings: FC = () => {
           </Tooltip>
         </SettingRowTitle>
         <HStack alignItems="center" gap="5px" style={{ width: 315 }}>
-          <Input
-            type="password"
-            value={joplinToken || ''}
-            onChange={handleJoplinTokenChange}
-            style={{ width: 250 }}
-            placeholder={t('settings.data.joplin.token_placeholder')}
-          />
-          <Button onClick={handleJoplinConnectionCheck}>{t('settings.data.joplin.check.button')}</Button>
+          <Space.Compact style={{ width: '100%' }}>
+            <Input.Password
+              value={joplinToken || ''}
+              onChange={handleJoplinTokenChange}
+              onBlur={handleJoplinTokenChange}
+              placeholder={t('settings.data.joplin.token_placeholder')}
+              style={{ width: '100%' }}
+            />
+            <Button onClick={handleJoplinConnectionCheck}>{t('settings.data.joplin.check.button')}</Button>
+          </Space.Compact>
         </HStack>
       </SettingRow>
       <SettingDivider />

@@ -55,6 +55,7 @@ import {
   default as ChatGptModelLogoDakr,
   default as ChatGPTo1ModelLogoDark
 } from '@renderer/assets/images/models/gpt_dark.png'
+import ChatGPTImageModelLogo from '@renderer/assets/images/models/gpt_image_1.png'
 import ChatGPTo1ModelLogo from '@renderer/assets/images/models/gpt_o1.png'
 import GrokModelLogo from '@renderer/assets/images/models/grok.png'
 import GrokModelLogoDark from '@renderer/assets/images/models/grok_dark.png'
@@ -107,6 +108,7 @@ import NvidiaModelLogo from '@renderer/assets/images/models/nvidia.png'
 import NvidiaModelLogoDark from '@renderer/assets/images/models/nvidia_dark.png'
 import PalmModelLogo from '@renderer/assets/images/models/palm.png'
 import PalmModelLogoDark from '@renderer/assets/images/models/palm_dark.png'
+import PanguModelLogo from '@renderer/assets/images/models/pangu.svg'
 import {
   default as PerplexityModelLogo,
   default as PerplexityModelLogoDark
@@ -140,8 +142,11 @@ import XirangModelLogo from '@renderer/assets/images/models/xirang.png'
 import XirangModelLogoDark from '@renderer/assets/images/models/xirang_dark.png'
 import YiModelLogo from '@renderer/assets/images/models/yi.png'
 import YiModelLogoDark from '@renderer/assets/images/models/yi_dark.png'
+import YoudaoLogo from '@renderer/assets/images/providers/netease-youdao.svg'
+import NomicLogo from '@renderer/assets/images/providers/nomic.png'
 import { getProviderByModel } from '@renderer/services/AssistantService'
-import { Assistant, Model } from '@renderer/types'
+import { Model } from '@renderer/types'
+import { getLowerBaseModelName, isUserSelectedModelType } from '@renderer/utils'
 import OpenAI from 'openai'
 
 import { WEB_SEARCH_PROMPT_FOR_OPENROUTER } from './prompts'
@@ -160,7 +165,7 @@ const visionAllowedModels = [
   'claude-sonnet-4',
   'claude-opus-4',
   'vision',
-  'glm-4v',
+  'glm-4(?:\\.\\d+)?v(?:-[\\w-]+)?',
   'qwen-vl',
   'qwen2-vl',
   'qwen2.5-vl',
@@ -168,6 +173,7 @@ const visionAllowedModels = [
   'qvq',
   'internvl2',
   'grok-vision-beta',
+  'grok-4(?:-[\\w-]+)?',
   'pixtral',
   'gpt-4(?:-[\\w-]+)',
   'gpt-4.1(?:-[\\w-]+)?',
@@ -179,7 +185,13 @@ const visionAllowedModels = [
   'o4(?:-[\\w-]+)?',
   'deepseek-vl(?:[\\w-]+)?',
   'kimi-latest',
-  'gemma-3(?:-[\\w-]+)'
+  'gemma-3(?:-[\\w-]+)',
+  'doubao-seed-1[.-]6(?:-[\\w-]+)?',
+  'kimi-thinking-preview',
+  `gemma3(?:-[\\w-]+)`,
+  'kimi-vl-a3b-thinking(?:-[\\w-]+)?',
+  'llama-guard-4(?:-[\\w-]+)?',
+  'llama-4(?:-[\\w-]+)?'
 ]
 
 const visionExcludedModels = [
@@ -197,12 +209,17 @@ export const VISION_REGEX = new RegExp(
   'i'
 )
 
+// For middleware to identify models that must use the dedicated Image API
+export const DEDICATED_IMAGE_MODELS = ['grok-2-image', 'dall-e-3', 'dall-e-2', 'gpt-image-1']
+export const isDedicatedImageGenerationModel = (model: Model): boolean =>
+  DEDICATED_IMAGE_MODELS.filter((m) => model.id.includes(m)).length > 0
+
 // Text to image models
-export const TEXT_TO_IMAGE_REGEX = /flux|diffusion|stabilityai|sd-|dall|cogview|janus/i
+export const TEXT_TO_IMAGE_REGEX = /flux|diffusion|stabilityai|sd-|dall|cogview|janus|midjourney|mj-|image|gpt-image/i
 
 // Reasoning models
 export const REASONING_REGEX =
-  /^(o\d+(?:-[\w-]+)?|.*\b(?:reasoning|reasoner|thinking)\b.*|.*-[rR]\d+.*|.*\bqwq(?:-[\w-]+)?\b.*|.*\bhunyuan-t1(?:-[\w-]+)?\b.*|.*\bglm-zero-preview\b.*|.*\bgrok-3-mini(?:-[\w-]+)?\b.*)$/i
+  /^(o\d+(?:-[\w-]+)?|.*\b(?:reasoning|reasoner|thinking)\b.*|.*-[rR]\d+.*|.*\bqwq(?:-[\w-]+)?\b.*|.*\bhunyuan-t1(?:-[\w-]+)?\b.*|.*\bglm-zero-preview\b.*|.*\bgrok-(?:3-mini|4)(?:-[\w-]+)?\b.*)$/i
 
 // Embedding models
 export const EMBEDDING_REGEX =
@@ -226,9 +243,12 @@ export const FUNCTION_CALLING_MODELS = [
   'hunyuan',
   'deepseek',
   'glm-4(?:-[\\w-]+)?',
+  'glm-4.5(?:-[\\w-]+)?',
   'learnlm(?:-[\\w-]+)?',
   'gemini(?:-[\\w-]+)?', // 提前排除了gemini的嵌入模型
-  'grok-3(?:-[\\w-]+)?'
+  'grok-3(?:-[\\w-]+)?',
+  'doubao-seed-1[.-]6(?:-[\\w-]+)?',
+  'kimi-k2(?:-[\\w-]+)?'
 ]
 
 const FUNCTION_CALLING_EXCLUDED_MODELS = [
@@ -236,7 +256,9 @@ const FUNCTION_CALLING_EXCLUDED_MODELS = [
   'imagen(?:-[\\w-]+)?',
   'o1-mini',
   'o1-preview',
-  'AIDC-AI/Marco-o1'
+  'AIDC-AI/Marco-o1',
+  'gemini-1(?:\\.[\\w-]+)?',
+  'qwen-mt(?:-[\\w-]+)?'
 ]
 
 export const FUNCTION_CALLING_REGEX = new RegExp(
@@ -249,20 +271,28 @@ export const CLAUDE_SUPPORTED_WEBSEARCH_REGEX = new RegExp(
   'i'
 )
 
-export function isFunctionCallingModel(model: Model): boolean {
-  if (model.type?.includes('function_calling')) {
-    return true
+export function isFunctionCallingModel(model?: Model): boolean {
+  if (!model || isEmbeddingModel(model) || isRerankModel(model)) {
+    return false
   }
 
-  if (isEmbeddingModel(model)) {
-    return false
+  if (isUserSelectedModelType(model, 'function_calling') !== undefined) {
+    return isUserSelectedModelType(model, 'function_calling')!
   }
 
   if (model.provider === 'qiniu') {
     return ['deepseek-v3-tool', 'deepseek-v3-0324', 'qwq-32b', 'qwen2.5-72b-instruct'].includes(model.id)
   }
 
+  if (model.provider === 'doubao' || model.id.includes('doubao')) {
+    return FUNCTION_CALLING_REGEX.test(model.id) || FUNCTION_CALLING_REGEX.test(model.name)
+  }
+
   if (['deepseek', 'anthropic'].includes(model.provider)) {
+    return true
+  }
+
+  if (['kimi', 'moonshot'].includes(model.provider)) {
     return true
   }
 
@@ -284,6 +314,7 @@ export function getModelLogo(modelId: string) {
     o1: isLight ? ChatGPTo1ModelLogo : ChatGPTo1ModelLogoDark,
     o3: isLight ? ChatGPTo1ModelLogo : ChatGPTo1ModelLogoDark,
     o4: isLight ? ChatGPTo1ModelLogo : ChatGPTo1ModelLogoDark,
+    'gpt-image': ChatGPTImageModelLogo,
     'gpt-3': isLight ? ChatGPT35ModelLogo : ChatGPT35ModelLogoDark,
     'gpt-4': isLight ? ChatGPT4ModelLogo : ChatGPT4ModelLogoDark,
     gpts: isLight ? ChatGPT4ModelLogo : ChatGPT4ModelLogoDark,
@@ -297,7 +328,7 @@ export function getModelLogo(modelId: string) {
     'davinci-': isLight ? ChatGptModelLogo : ChatGptModelLogoDakr,
     glm: isLight ? ChatGLMModelLogo : ChatGLMModelLogoDark,
     deepseek: isLight ? DeepSeekModelLogo : DeepSeekModelLogoDark,
-    '(qwen|qwq-|qvq-)': isLight ? QwenModelLogo : QwenModelLogoDark,
+    '(qwen|qwq|qwq-|qvq-)': isLight ? QwenModelLogo : QwenModelLogoDark,
     gemma: isLight ? GemmaModelLogo : GemmaModelLogoDark,
     'yi-': isLight ? YiModelLogo : YiModelLogoDark,
     llama: isLight ? LlamaModelLogo : LlamaModelLogoDark,
@@ -305,6 +336,7 @@ export function getModelLogo(modelId: string) {
     mistral: isLight ? MistralModelLogo : MistralModelLogoDark,
     codestral: CodestralModelLogo,
     ministral: isLight ? MistralModelLogo : MistralModelLogoDark,
+    magistral: isLight ? MistralModelLogo : MistralModelLogoDark,
     moonshot: isLight ? MoonshotModelLogo : MoonshotModelLogoDark,
     kimi: isLight ? MoonshotModelLogo : MoonshotModelLogoDark,
     phi: isLight ? MicrosoftModelLogo : MicrosoftModelLogoDark,
@@ -376,12 +408,15 @@ export function getModelLogo(modelId: string) {
     'google/': isLight ? GoogleModelLogo : GoogleModelLogoDark,
     xirang: isLight ? XirangModelLogo : XirangModelLogoDark,
     hugging: isLight ? HuggingfaceModelLogo : HuggingfaceModelLogoDark,
+    youdao: YoudaoLogo,
     embedding: isLight ? EmbeddingModelLogo : EmbeddingModelLogoDark,
     perplexity: isLight ? PerplexityModelLogo : PerplexityModelLogoDark,
     sonar: isLight ? PerplexityModelLogo : PerplexityModelLogoDark,
     'bge-': BgeModelLogo,
     'voyage-': VoyageModelLogo,
-    tokenflux: isLight ? TokenFluxModelLogo : TokenFluxModelLogoDark
+    tokenflux: isLight ? TokenFluxModelLogo : TokenFluxModelLogoDark,
+    'nomic-': NomicLogo,
+    'pangu-': PanguModelLogo
   }
 
   for (const key in logoMap) {
@@ -395,42 +430,190 @@ export function getModelLogo(modelId: string) {
 }
 
 export const SYSTEM_MODELS: Record<string, Model[]> = {
+  defaultModel: [
+    {
+      // 默认助手模型
+      id: 'deepseek-ai/DeepSeek-V3',
+      name: 'deepseek-ai/DeepSeek-V3',
+      provider: 'silicon',
+      group: 'deepseek-ai'
+    },
+    {
+      // 默认话题命名模型
+      id: 'Qwen/Qwen3-8B',
+      name: 'Qwen/Qwen3-8B',
+      provider: 'silicon',
+      group: 'Qwen'
+    },
+    {
+      // 默认翻译模型
+      id: 'deepseek-ai/DeepSeek-V3',
+      name: 'deepseek-ai/DeepSeek-V3',
+      provider: 'silicon',
+      group: 'deepseek-ai'
+    },
+    {
+      // 默认快捷助手模型
+      id: 'deepseek-ai/DeepSeek-V3',
+      name: 'deepseek-ai/DeepSeek-V3',
+      provider: 'silicon',
+      group: 'deepseek-ai'
+    }
+  ],
+  '302ai': [
+    {
+      id: 'deepseek-chat',
+      name: 'deepseek-chat',
+      provider: '302ai',
+      group: 'DeepSeek'
+    },
+    {
+      id: 'deepseek-reasoner',
+      name: 'deepseek-reasoner',
+      provider: '302ai',
+      group: 'DeepSeek'
+    },
+    {
+      id: 'chatgpt-4o-latest',
+      name: 'chatgpt-4o-latest',
+      provider: '302ai',
+      group: 'OpenAI'
+    },
+    {
+      id: 'gpt-4.1',
+      name: 'gpt-4.1',
+      provider: '302ai',
+      group: 'OpenAI'
+    },
+    {
+      id: 'o3',
+      name: 'o3',
+      provider: '302ai',
+      group: 'OpenAI'
+    },
+    {
+      id: 'o4-mini',
+      name: 'o4-mini',
+      provider: '302ai',
+      group: 'OpenAI'
+    },
+    {
+      id: 'qwen3-235b-a22b',
+      name: 'qwen3-235b-a22b',
+      provider: '302ai',
+      group: 'Qwen'
+    },
+    {
+      id: 'gemini-2.5-flash-preview-05-20',
+      name: 'gemini-2.5-flash-preview-05-20',
+      provider: '302ai',
+      group: 'Gemini'
+    },
+    {
+      id: 'gemini-2.5-pro-preview-06-05',
+      name: 'gemini-2.5-pro-preview-06-05',
+      provider: '302ai',
+      group: 'Gemini'
+    },
+    {
+      id: 'claude-sonnet-4-20250514',
+      provider: '302ai',
+      name: 'claude-sonnet-4-20250514',
+      group: 'Anthropic'
+    },
+    {
+      id: 'claude-opus-4-20250514',
+      provider: '302ai',
+      name: 'claude-opus-4-20250514',
+      group: 'Anthropic'
+    },
+    {
+      id: 'jina-clip-v2',
+      name: 'jina-clip-v2',
+      provider: '302ai',
+      group: 'Jina AI'
+    },
+    {
+      id: 'jina-reranker-m0',
+      name: 'jina-reranker-m0',
+      provider: '302ai',
+      group: 'Jina AI'
+    }
+  ],
+  ph8: [
+    {
+      id: 'deepseek-v3-241226',
+      name: 'deepseek-v3-241226',
+      provider: 'ph8',
+      group: 'DeepSeek'
+    },
+    {
+      id: 'deepseek-r1-250120',
+      name: 'deepseek-r1-250120',
+      provider: 'ph8',
+      group: 'DeepSeek'
+    }
+  ],
   aihubmix: [
+    {
+      id: 'o3',
+      provider: 'aihubmix',
+      name: 'o3',
+      group: 'gpt'
+    },
+    {
+      id: 'o4-mini',
+      provider: 'aihubmix',
+      name: 'o4-mini',
+      group: 'gpt'
+    },
+    {
+      id: 'gpt-4.1',
+      provider: 'aihubmix',
+      name: 'gpt-4.1',
+      group: 'gpt'
+    },
     {
       id: 'gpt-4o',
       provider: 'aihubmix',
-      name: 'GPT-4o',
-      group: 'GPT-4o'
+      name: 'gpt-4o',
+      group: 'gpt'
     },
     {
-      id: 'claude-3-5-sonnet-latest',
+      id: 'gpt-image-1',
       provider: 'aihubmix',
-      name: 'Claude 3.5 Sonnet',
-      group: 'Claude 3.5'
+      name: 'gpt-image-1',
+      group: 'gpt'
     },
     {
-      id: 'gemini-2.0-flash-exp-search',
+      id: 'DeepSeek-V3',
       provider: 'aihubmix',
-      name: 'Gemini 2.0 Flash Exp Search',
-      group: 'Gemini 2.0'
+      name: 'DeepSeek-V3',
+      group: 'DeepSeek'
     },
     {
-      id: 'deepseek-chat',
+      id: 'claude-sonnet-4-20250514',
       provider: 'aihubmix',
-      name: 'DeepSeek Chat',
-      group: 'DeepSeek Chat'
+      name: 'claude-sonnet-4-20250514',
+      group: 'claude'
     },
     {
-      id: 'aihubmix-Llama-3-3-70B-Instruct',
+      id: 'gemini-2.5-pro-preview-05-06',
       provider: 'aihubmix',
-      name: 'Llama-3.3-70b',
-      group: 'Llama 3.3'
+      name: 'gemini-2.5-pro-preview-05-06',
+      group: 'gemini'
     },
     {
-      id: 'Qwen/QVQ-72B-Preview',
+      id: 'gemini-2.5-flash-preview-05-20-nothink',
       provider: 'aihubmix',
-      name: 'Qwen/QVQ-72B',
-      group: 'Qwen'
+      name: 'gemini-2.5-flash-preview-05-20-nothink',
+      group: 'gemini'
+    },
+    {
+      id: 'gemini-2.5-flash',
+      provider: 'aihubmix',
+      name: 'gemini-2.5-flash',
+      group: 'gemini'
     }
   ],
 
@@ -601,19 +784,43 @@ export const SYSTEM_MODELS: Record<string, Model[]> = {
       group: 'Qwen'
     },
     {
-      id: 'meta-llama/Llama-3.3-70B-Instruct',
-      name: 'meta-llama/Llama-3.3-70B-Instruct',
-      provider: 'silicon',
-      group: 'meta-llama'
-    },
-    {
       id: 'BAAI/bge-m3',
       name: 'BAAI/bge-m3',
       provider: 'silicon',
       group: 'BAAI'
+    },
+    {
+      id: 'Qwen/Qwen3-8B',
+      name: 'Qwen/Qwen3-8B',
+      provider: 'silicon',
+      group: 'Qwen'
     }
   ],
   ppio: [
+    {
+      id: 'deepseek/deepseek-r1-0528',
+      provider: 'ppio',
+      name: 'DeepSeek R1-0528',
+      group: 'deepseek'
+    },
+    {
+      id: 'deepseek/deepseek-v3-0324',
+      provider: 'ppio',
+      name: 'DeepSeek V3-0324',
+      group: 'deepseek'
+    },
+    {
+      id: 'deepseek/deepseek-r1-turbo',
+      provider: 'ppio',
+      name: 'DeepSeek R1 Turbo',
+      group: 'deepseek'
+    },
+    {
+      id: 'deepseek/deepseek-v3-turbo',
+      provider: 'ppio',
+      name: 'DeepSeek V3 Turbo',
+      group: 'deepseek'
+    },
     {
       id: 'deepseek/deepseek-r1/community',
       name: 'DeepSeek: DeepSeek R1 (Community)',
@@ -627,52 +834,46 @@ export const SYSTEM_MODELS: Record<string, Model[]> = {
       group: 'deepseek'
     },
     {
-      id: 'deepseek/deepseek-r1',
+      id: 'minimaxai/minimax-m1-80k',
       provider: 'ppio',
-      name: 'DeepSeek R1',
-      group: 'deepseek'
+      name: 'MiniMax M1-80K',
+      group: 'minimaxai'
     },
     {
-      id: 'deepseek/deepseek-v3',
+      id: 'qwen/qwen3-235b-a22b-fp8',
       provider: 'ppio',
-      name: 'DeepSeek V3',
-      group: 'deepseek'
-    },
-    {
-      id: 'qwen/qwen-2.5-72b-instruct',
-      provider: 'ppio',
-      name: 'Qwen2.5-72B-Instruct',
+      name: 'Qwen3 235B',
       group: 'qwen'
     },
     {
-      id: 'qwen/qwen2.5-32b-instruct',
+      id: 'qwen/qwen3-32b-fp8',
       provider: 'ppio',
-      name: 'Qwen2.5-32B-Instruct',
+      name: 'Qwen3 32B',
       group: 'qwen'
     },
     {
-      id: 'meta-llama/llama-3.1-70b-instruct',
+      id: 'qwen/qwen3-30b-a3b-fp8',
       provider: 'ppio',
-      name: 'Llama-3.1-70B-Instruct',
-      group: 'meta-llama'
+      name: 'Qwen3 30B',
+      group: 'qwen'
     },
     {
-      id: 'meta-llama/llama-3.1-8b-instruct',
+      id: 'qwen/qwen2.5-vl-72b-instruct',
       provider: 'ppio',
-      name: 'Llama-3.1-8B-Instruct',
-      group: 'meta-llama'
+      name: 'Qwen2.5 VL 72B',
+      group: 'qwen'
     },
     {
-      id: '01-ai/yi-1.5-34b-chat',
+      id: 'qwen/qwen3-embedding-8b',
       provider: 'ppio',
-      name: 'Yi-1.5-34B-Chat',
-      group: '01-ai'
+      name: 'Qwen3 Embedding 8B',
+      group: 'qwen'
     },
     {
-      id: '01-ai/yi-1.5-9b-chat',
+      id: 'qwen/qwen3-reranker-8b',
       provider: 'ppio',
-      name: 'Yi-1.5-9B-Chat',
-      group: '01-ai'
+      name: 'Qwen3 Reranker 8B',
+      group: 'qwen'
     }
   ],
   alayanew: [],
@@ -1001,6 +1202,36 @@ export const SYSTEM_MODELS: Record<string, Model[]> = {
   ],
   zhipu: [
     {
+      id: 'glm-4.5',
+      provider: 'zhipu',
+      name: 'GLM-4.5',
+      group: 'GLM-4.5'
+    },
+    {
+      id: 'glm-4.5-flash',
+      provider: 'zhipu',
+      name: 'GLM-4.5-Flash',
+      group: 'GLM-4.5'
+    },
+    {
+      id: 'glm-4.5-air',
+      provider: 'zhipu',
+      name: 'GLM-4.5-AIR',
+      group: 'GLM-4.5'
+    },
+    {
+      id: 'glm-4.5-airx',
+      provider: 'zhipu',
+      name: 'GLM-4.5-AIRX',
+      group: 'GLM-4.5'
+    },
+    {
+      id: 'glm-4.5-x',
+      provider: 'zhipu',
+      name: 'GLM-4.5-X',
+      group: 'GLM-4.5'
+    },
+    {
       id: 'glm-z1-air',
       provider: 'zhipu',
       name: 'GLM-Z1-AIR',
@@ -1091,7 +1322,21 @@ export const SYSTEM_MODELS: Record<string, Model[]> = {
       name: 'moonshot-v1-auto',
       provider: 'moonshot',
       group: 'moonshot-v1',
-      owned_by: 'moonshot'
+      owned_by: 'moonshot',
+      capabilities: [{ type: 'text' }, { type: 'function_calling' }]
+    },
+    {
+      id: 'kimi-k2-0711-preview',
+      name: 'kimi-k2-0711-preview',
+      provider: 'moonshot',
+      group: 'kimi-k2',
+      owned_by: 'moonshot',
+      capabilities: [{ type: 'text' }, { type: 'function_calling' }],
+      pricing: {
+        input_per_million_tokens: 0.6,
+        output_per_million_tokens: 2.5,
+        currencySymbol: 'USD'
+      }
     }
   ],
   baichuan: [
@@ -1208,12 +1453,6 @@ export const SYSTEM_MODELS: Record<string, Model[]> = {
       id: 'deepseek-r1-distill-qwen-7b-250120',
       provider: 'doubao',
       name: 'DeepSeek-R1-Distill-Qwen-7B',
-      group: 'DeepSeek'
-    },
-    {
-      id: 'deepseek-v3-250324',
-      provider: 'doubao',
-      name: 'DeepSeek-V3',
       group: 'DeepSeek'
     },
     {
@@ -1360,6 +1599,12 @@ export const SYSTEM_MODELS: Record<string, Model[]> = {
     }
   ],
   grok: [
+    {
+      id: 'grok-4',
+      provider: 'grok',
+      name: 'Grok 4',
+      group: 'Grok'
+    },
     {
       id: 'grok-3',
       provider: 'grok',
@@ -1723,24 +1968,6 @@ export const SYSTEM_MODELS: Record<string, Model[]> = {
       group: '免费模型'
     },
     {
-      id: 'THUDM/glm-4-9b-chat',
-      provider: 'dmxapi',
-      name: 'THUDM/glm-4-9b-chat',
-      group: '免费模型'
-    },
-    {
-      id: 'glm-4-flash',
-      provider: 'dmxapi',
-      name: 'glm-4-flash',
-      group: '免费模型'
-    },
-    {
-      id: 'hunyuan-lite',
-      provider: 'dmxapi',
-      name: 'hunyuan-lite',
-      group: '免费模型'
-    },
-    {
       id: 'gpt-4o',
       provider: 'dmxapi',
       name: 'gpt-4o',
@@ -1800,6 +2027,12 @@ export const SYSTEM_MODELS: Record<string, Model[]> = {
       id: 'sonar',
       provider: 'perplexity',
       name: 'sonar',
+      group: 'Sonar'
+    },
+    {
+      id: 'sonar-deep-research',
+      provider: 'perplexity',
+      name: 'sonar-deep-research',
       group: 'Sonar'
     }
   ],
@@ -2078,76 +2311,149 @@ export const SYSTEM_MODELS: Record<string, Model[]> = {
       name: 'Qwen Plus',
       group: 'Qwen'
     }
-  ]
+  ],
+  cephalon: [
+    {
+      id: 'DeepSeek-R1',
+      provider: 'cephalon',
+      name: 'DeepSeek-R1满血版',
+      group: 'DeepSeek'
+    }
+  ],
+  lanyun: [
+    {
+      id: '/maas/deepseek-ai/DeepSeek-R1-0528',
+      name: 'deepseek-ai/DeepSeek-R1',
+      provider: 'lanyun',
+      group: 'deepseek-ai'
+    },
+    {
+      id: '/maas/deepseek-ai/DeepSeek-V3-0324',
+      name: 'deepseek-ai/DeepSeek-V3',
+      provider: 'lanyun',
+      group: 'deepseek-ai'
+    },
+    {
+      id: '/maas/qwen/Qwen2.5-72B-Instruct',
+      provider: 'lanyun',
+      name: 'Qwen2.5-72B-Instruct',
+      group: 'Qwen'
+    },
+    {
+      id: '/maas/qwen/Qwen3-235B-A22B',
+      name: 'Qwen/Qwen3-235B',
+      provider: 'lanyun',
+      group: 'Qwen'
+    },
+    {
+      id: '/maas/minimax/MiniMax-M1-80k',
+      name: 'MiniMax-M1-80k',
+      provider: 'lanyun',
+      group: 'MiniMax'
+    },
+    {
+      id: '/maas/google/Gemma3-27B',
+      name: 'Gemma3-27B',
+      provider: 'lanyun',
+      group: 'google'
+    }
+  ],
+  'new-api': [
+    { id: 'deepseek-r1', provider: 'openai', name: 'deepseek-r1', group: 'deepseek-r1' },
+    { id: 'deepseek-v3', provider: 'openai', name: 'deepseek-v3', group: 'deepseek-v3' },
+    { id: 'deepseek-r1-all', provider: 'openai', name: 'deepseek-r1-all', group: 'deepseek-r1-all' },
+    { id: 'deepseek-vision', provider: 'openai', name: 'deepseek-vision', group: 'deepseek-vision' },
+    { id: 'kimi', provider: 'openai', name: 'kimi', group: 'China' },
+    { id: 'qwen-chat', provider: 'openai', name: 'qwen-chat', group: 'China' },
+    { id: 'qwen-math', provider: 'openai', name: 'qwen-math', group: 'China' },
+    { id: 'grok-3', provider: 'openai', name: 'grok-3', group: 'grok-3' },
+    { id: 'grok-3-imageGen', provider: 'openai', name: 'grok-3-imageGen', group: 'grok-3' },
+    { id: 'grok-3-reasoning', provider: 'openai', name: 'grok-3-reasoning', group: 'grok-3' },
+    { id: 'gpt-3.5-turbo', provider: 'openai', name: ' gpt-3.5-turbo', group: 'Openai' },
+    { id: 'gpt-4', provider: 'openai', name: ' GPT-4', group: 'Openai' },
+    { id: 'gpt-4-vision-preview', provider: 'openai', name: ' GPT-4-vision-preview', group: 'Openai' },
+    { id: 'gpt-4-all', provider: 'openai', name: ' GPT-4-all', group: 'Openai_plus' },
+    { id: 'gpt-4o', provider: 'openai', name: ' GPT-4o', group: 'GPT 4o' },
+    { id: 'gpt-4o-mini', provider: 'openai', name: ' GPT-4o-mini', group: 'GPT 4o' },
+    { id: 'o1-mini', provider: 'openai', name: ' o1-mini', group: 'o1' },
+    { id: 'o1-preview', provider: 'openai', name: ' o1-preview', group: 'o1' }
+  ],
+  'aws-bedrock': []
 }
 
 export const TEXT_TO_IMAGES_MODELS = [
   {
-    id: 'black-forest-labs/FLUX.1-schnell',
+    id: 'Kwai-Kolors/Kolors',
     provider: 'silicon',
-    name: 'FLUX.1 Schnell',
-    group: 'FLUX'
-  },
-  {
-    id: 'black-forest-labs/FLUX.1-dev',
-    provider: 'silicon',
-    name: 'FLUX.1 Dev',
-    group: 'FLUX'
-  },
-  {
-    id: 'black-forest-labs/FLUX.1-pro',
-    provider: 'silicon',
-    name: 'FLUX.1 Pro',
-    group: 'FLUX'
-  },
-  {
-    id: 'Pro/black-forest-labs/FLUX.1-schnell',
-    provider: 'silicon',
-    name: 'FLUX.1 Schnell Pro',
-    group: 'FLUX'
-  },
-  {
-    id: 'LoRA/black-forest-labs/FLUX.1-dev',
-    provider: 'silicon',
-    name: 'FLUX.1 Dev LoRA',
-    group: 'FLUX'
-  },
-  {
-    id: 'deepseek-ai/Janus-Pro-7B',
-    provider: 'silicon',
-    name: 'Janus-Pro-7B',
-    group: 'deepseek-ai'
-  },
-  {
-    id: 'stabilityai/stable-diffusion-3-5-large',
-    provider: 'silicon',
-    name: 'Stable Diffusion 3.5 Large',
-    group: 'Stable Diffusion'
-  },
-  {
-    id: 'stabilityai/stable-diffusion-3-5-large-turbo',
-    provider: 'silicon',
-    name: 'Stable Diffusion 3.5 Large Turbo',
-    group: 'Stable Diffusion'
-  },
-  {
-    id: 'stabilityai/stable-diffusion-3-medium',
-    provider: 'silicon',
-    name: 'Stable Diffusion 3 Medium',
-    group: 'Stable Diffusion'
-  },
-  {
-    id: 'stabilityai/stable-diffusion-2-1',
-    provider: 'silicon',
-    name: 'Stable Diffusion 2.1',
-    group: 'Stable Diffusion'
-  },
-  {
-    id: 'stabilityai/stable-diffusion-xl-base-1.0',
-    provider: 'silicon',
-    name: 'Stable Diffusion XL Base 1.0',
-    group: 'Stable Diffusion'
+    name: 'Kolors',
+    group: 'Kwai-Kolors'
   }
+  // {
+  //   id: 'black-forest-labs/FLUX.1-schnell',
+  //   provider: 'silicon',
+  //   name: 'FLUX.1 Schnell',
+  //   group: 'FLUX'
+  // },
+  // {
+  //   id: 'black-forest-labs/FLUX.1-dev',
+  //   provider: 'silicon',
+  //   name: 'FLUX.1 Dev',
+  //   group: 'FLUX'
+  // },
+  // {
+  //   id: 'black-forest-labs/FLUX.1-pro',
+  //   provider: 'silicon',
+  //   name: 'FLUX.1 Pro',
+  //   group: 'FLUX'
+  // },
+  // {
+  //   id: 'Pro/black-forest-labs/FLUX.1-schnell',
+  //   provider: 'silicon',
+  //   name: 'FLUX.1 Schnell Pro',
+  //   group: 'FLUX'
+  // },
+  // {
+  //   id: 'LoRA/black-forest-labs/FLUX.1-dev',
+  //   provider: 'silicon',
+  //   name: 'FLUX.1 Dev LoRA',
+  //   group: 'FLUX'
+  // },
+  // {
+  //   id: 'deepseek-ai/Janus-Pro-7B',
+  //   provider: 'silicon',
+  //   name: 'Janus-Pro-7B',
+  //   group: 'deepseek-ai'
+  // },
+  // {
+  //   id: 'stabilityai/stable-diffusion-3-5-large',
+  //   provider: 'silicon',
+  //   name: 'Stable Diffusion 3.5 Large',
+  //   group: 'Stable Diffusion'
+  // },
+  // {
+  //   id: 'stabilityai/stable-diffusion-3-5-large-turbo',
+  //   provider: 'silicon',
+  //   name: 'Stable Diffusion 3.5 Large Turbo',
+  //   group: 'Stable Diffusion'
+  // },
+  // {
+  //   id: 'stabilityai/stable-diffusion-3-medium',
+  //   provider: 'silicon',
+  //   name: 'Stable Diffusion 3 Medium',
+  //   group: 'Stable Diffusion'
+  // },
+  // {
+  //   id: 'stabilityai/stable-diffusion-2-1',
+  //   provider: 'silicon',
+  //   name: 'Stable Diffusion 2.1',
+  //   group: 'Stable Diffusion'
+  // },
+  // {
+  //   id: 'stabilityai/stable-diffusion-xl-base-1.0',
+  //   provider: 'silicon',
+  //   name: 'Stable Diffusion XL Base 1.0',
+  //   group: 'Stable Diffusion'
+  // }
 ]
 
 export const TEXT_TO_IMAGES_MODELS_SUPPORT_IMAGE_ENHANCEMENT = [
@@ -2155,78 +2461,86 @@ export const TEXT_TO_IMAGES_MODELS_SUPPORT_IMAGE_ENHANCEMENT = [
   'stabilityai/stable-diffusion-xl-base-1.0'
 ]
 
+export const SUPPORTED_DISABLE_GENERATION_MODELS = [
+  'gemini-2.0-flash-exp',
+  'gpt-4o',
+  'gpt-4o-mini',
+  'gpt-4.1',
+  'gpt-4.1-mini',
+  'gpt-4.1-nano',
+  'o3'
+]
+
 export const GENERATE_IMAGE_MODELS = [
   'gemini-2.0-flash-exp-image-generation',
   'gemini-2.0-flash-preview-image-generation',
-  'gemini-2.0-flash-exp',
   'grok-2-image-1212',
   'grok-2-image',
   'grok-2-image-latest',
-  'gpt-image-1'
+  'gpt-image-1',
+  ...SUPPORTED_DISABLE_GENERATION_MODELS
 ]
 
-export const GEMINI_SEARCH_MODELS = [
-  'gemini-2.0-flash',
-  'gemini-2.0-flash-lite',
-  'gemini-2.0-flash-exp',
-  'gemini-2.0-flash-001',
-  'gemini-2.0-pro-exp-02-05',
-  'gemini-2.0-pro-exp',
-  'gemini-2.5-pro-exp',
-  'gemini-2.5-pro-exp-03-25',
-  'gemini-2.5-pro-preview',
-  'gemini-2.5-pro-preview-03-25',
-  'gemini-2.5-pro-preview-05-06',
-  'gemini-2.5-flash-preview',
-  'gemini-2.5-flash-preview-04-17'
-]
+export const GEMINI_SEARCH_REGEX = new RegExp('gemini-2\\..*', 'i')
 
 export const OPENAI_NO_SUPPORT_DEV_ROLE_MODELS = ['o1-preview', 'o1-mini']
 
-export const PERPLEXITY_SEARCH_MODELS = ['sonar-pro', 'sonar', 'sonar-reasoning', 'sonar-reasoning-pro']
+export const PERPLEXITY_SEARCH_MODELS = [
+  'sonar-pro',
+  'sonar',
+  'sonar-reasoning',
+  'sonar-reasoning-pro',
+  'sonar-deep-research'
+]
 
 export function isTextToImageModel(model: Model): boolean {
   return TEXT_TO_IMAGE_REGEX.test(model.id)
 }
 
 export function isEmbeddingModel(model: Model): boolean {
-  if (!model) {
+  if (!model || isRerankModel(model)) {
     return false
+  }
+
+  if (isUserSelectedModelType(model, 'embedding') !== undefined) {
+    return isUserSelectedModelType(model, 'embedding')!
   }
 
   if (['anthropic'].includes(model?.provider)) {
     return false
   }
 
-  if (model.provider === 'doubao') {
+  if (model.provider === 'doubao' || model.id.includes('doubao')) {
     return EMBEDDING_REGEX.test(model.name)
   }
 
-  if (isRerankModel(model)) {
-    return false
-  }
-
-  return EMBEDDING_REGEX.test(model.id) || model.type?.includes('embedding') || false
+  return EMBEDDING_REGEX.test(model.id) || false
 }
 
 export function isRerankModel(model: Model): boolean {
+  if (isUserSelectedModelType(model, 'rerank') !== undefined) {
+    return isUserSelectedModelType(model, 'rerank')!
+  }
   return model ? RERANKING_REGEX.test(model.id) || false : false
 }
 
 export function isVisionModel(model: Model): boolean {
-  if (!model) {
+  if (!model || isEmbeddingModel(model) || isRerankModel(model)) {
     return false
   }
   // 新添字段 copilot-vision-request 后可使用 vision
   // if (model.provider === 'copilot') {
   //   return false
   // }
-
-  if (model.provider === 'doubao') {
-    return VISION_REGEX.test(model.name) || model.type?.includes('vision') || false
+  if (isUserSelectedModelType(model, 'vision') !== undefined) {
+    return isUserSelectedModelType(model, 'vision')!
   }
 
-  return VISION_REGEX.test(model.id) || model.type?.includes('vision') || false
+  if (model.provider === 'doubao' || model.id.includes('doubao')) {
+    return VISION_REGEX.test(model.name) || VISION_REGEX.test(model.id) || false
+  }
+
+  return VISION_REGEX.test(model.id) || false
 }
 
 export function isOpenAIReasoningModel(model: Model): boolean {
@@ -2271,8 +2585,32 @@ export function isSupportedReasoningEffortOpenAIModel(model: Model): boolean {
   )
 }
 
-export function isOpenAIWebSearch(model: Model): boolean {
+export function isOpenAIChatCompletionOnlyModel(model: Model): boolean {
+  if (!model) {
+    return false
+  }
+
+  return (
+    model.id.includes('gpt-4o-search-preview') ||
+    model.id.includes('gpt-4o-mini-search-preview') ||
+    model.id.includes('o1-mini') ||
+    model.id.includes('o1-preview')
+  )
+}
+
+export function isOpenAIWebSearchChatCompletionOnlyModel(model: Model): boolean {
   return model.id.includes('gpt-4o-search-preview') || model.id.includes('gpt-4o-mini-search-preview')
+}
+
+export function isOpenAIWebSearchModel(model: Model): boolean {
+  return (
+    model.id.includes('gpt-4o-search-preview') ||
+    model.id.includes('gpt-4o-mini-search-preview') ||
+    (model.id.includes('gpt-4.1') && !model.id.includes('gpt-4.1-nano')) ||
+    (model.id.includes('gpt-4o') && !model.id.includes('gpt-4o-image')) ||
+    model.id.includes('o3') ||
+    model.id.includes('o4')
+  )
 }
 
 export function isSupportedThinkingTokenModel(model?: Model): boolean {
@@ -2283,7 +2621,10 @@ export function isSupportedThinkingTokenModel(model?: Model): boolean {
   return (
     isSupportedThinkingTokenGeminiModel(model) ||
     isSupportedThinkingTokenQwenModel(model) ||
-    isSupportedThinkingTokenClaudeModel(model)
+    isSupportedThinkingTokenClaudeModel(model) ||
+    isSupportedThinkingTokenDoubaoModel(model) ||
+    isSupportedThinkingTokenHunyuanModel(model) ||
+    isSupportedThinkingTokenZhipuModel(model)
   )
 }
 
@@ -2292,7 +2633,11 @@ export function isSupportedReasoningEffortModel(model?: Model): boolean {
     return false
   }
 
-  return isSupportedReasoningEffortOpenAIModel(model) || isSupportedReasoningEffortGrokModel(model)
+  return (
+    isSupportedReasoningEffortOpenAIModel(model) ||
+    isSupportedReasoningEffortGrokModel(model) ||
+    isSupportedReasoningEffortPerplexityModel(model)
+  )
 }
 
 export function isGrokModel(model?: Model): boolean {
@@ -2302,7 +2647,7 @@ export function isGrokModel(model?: Model): boolean {
   return model.id.includes('grok')
 }
 
-export function isGrokReasoningModel(model?: Model): boolean {
+export function isSupportedReasoningEffortGrokModel(model?: Model): boolean {
   if (!model) {
     return false
   }
@@ -2314,21 +2659,36 @@ export function isGrokReasoningModel(model?: Model): boolean {
   return false
 }
 
-export const isSupportedReasoningEffortGrokModel = isGrokReasoningModel
-
-export function isGeminiReasoningModel(model?: Model): boolean {
+export function isGrokReasoningModel(model?: Model): boolean {
   if (!model) {
     return false
   }
-
-  if (model.id.includes('gemini-2.5')) {
+  if (isSupportedReasoningEffortGrokModel(model) || model.id.includes('grok-4')) {
     return true
   }
 
   return false
 }
 
-export const isSupportedThinkingTokenGeminiModel = isGeminiReasoningModel
+export function isGeminiReasoningModel(model?: Model): boolean {
+  if (!model) {
+    return false
+  }
+
+  if (model.id.startsWith('gemini') && model.id.includes('thinking')) {
+    return true
+  }
+
+  if (isSupportedThinkingTokenGeminiModel(model)) {
+    return true
+  }
+
+  return false
+}
+
+export const isSupportedThinkingTokenGeminiModel = (model: Model): boolean => {
+  return model.id.includes('gemini-2.5')
+}
 
 export function isQwenReasoningModel(model?: Model): boolean {
   if (!model) {
@@ -2351,18 +2711,37 @@ export function isSupportedThinkingTokenQwenModel(model?: Model): boolean {
     return false
   }
 
+  const baseName = getLowerBaseModelName(model.id, '/')
+
+  if (baseName.includes('coder') || baseName.includes('qwen3-235b-a22b-instruct')) {
+    return false
+  }
+
   return (
-    model.id.toLowerCase().startsWith('qwen3') ||
-    model.id.toLowerCase().startsWith('qwen/qwen3') ||
+    baseName.startsWith('qwen3') ||
     [
+      'qwen-plus',
       'qwen-plus-latest',
       'qwen-plus-0428',
       'qwen-plus-2025-04-28',
+      'qwen-plus-0714',
+      'qwen-plus-2025-07-14',
+      'qwen-turbo',
       'qwen-turbo-latest',
       'qwen-turbo-0428',
-      'qwen-turbo-2025-04-28'
-    ].includes(model.id.toLowerCase())
+      'qwen-turbo-2025-04-28',
+      'qwen-turbo-0715',
+      'qwen-turbo-2025-07-15'
+    ].includes(baseName)
   )
+}
+
+export function isSupportedThinkingTokenDoubaoModel(model?: Model): boolean {
+  if (!model) {
+    return false
+  }
+
+  return DOUBAO_THINKING_MODEL_REGEX.test(model.id) || DOUBAO_THINKING_MODEL_REGEX.test(model.name)
 }
 
 export function isClaudeReasoningModel(model?: Model): boolean {
@@ -2379,13 +2758,63 @@ export function isClaudeReasoningModel(model?: Model): boolean {
 
 export const isSupportedThinkingTokenClaudeModel = isClaudeReasoningModel
 
-export function isReasoningModel(model?: Model): boolean {
+export const isSupportedThinkingTokenHunyuanModel = (model?: Model): boolean => {
+  if (!model) {
+    return false
+  }
+  const baseName = getLowerBaseModelName(model.id, '/')
+  return baseName.includes('hunyuan-a13b')
+}
+
+export const isHunyuanReasoningModel = (model?: Model): boolean => {
+  if (!model) {
+    return false
+  }
+  return isSupportedThinkingTokenHunyuanModel(model) || model.id.toLowerCase().includes('hunyuan-t1')
+}
+
+export const isPerplexityReasoningModel = (model?: Model): boolean => {
   if (!model) {
     return false
   }
 
-  if (model.provider === 'doubao') {
-    return REASONING_REGEX.test(model.name) || model.type?.includes('reasoning') || false
+  const baseName = getLowerBaseModelName(model.id, '/')
+  return isSupportedReasoningEffortPerplexityModel(model) || baseName.includes('reasoning')
+}
+
+export const isSupportedReasoningEffortPerplexityModel = (model: Model): boolean => {
+  const baseName = getLowerBaseModelName(model.id, '/')
+  return baseName.includes('sonar-deep-research')
+}
+
+export const isSupportedThinkingTokenZhipuModel = (model: Model): boolean => {
+  const baseName = getLowerBaseModelName(model.id, '/')
+  return baseName.includes('glm-4.5')
+}
+
+export const isZhipuReasoningModel = (model?: Model): boolean => {
+  if (!model) {
+    return false
+  }
+  return isSupportedThinkingTokenZhipuModel(model) || model.id.toLowerCase().includes('glm-z1')
+}
+
+export function isReasoningModel(model?: Model): boolean {
+  if (!model || isEmbeddingModel(model) || isRerankModel(model) || isTextToImageModel(model)) {
+    return false
+  }
+
+  if (isUserSelectedModelType(model, 'reasoning') !== undefined) {
+    return isUserSelectedModelType(model, 'reasoning')!
+  }
+
+  if (model.provider === 'doubao' || model.id.includes('doubao')) {
+    return (
+      REASONING_REGEX.test(model.id) ||
+      REASONING_REGEX.test(model.name) ||
+      isSupportedThinkingTokenDoubaoModel(model) ||
+      false
+    )
   }
 
   if (
@@ -2394,12 +2823,17 @@ export function isReasoningModel(model?: Model): boolean {
     isGeminiReasoningModel(model) ||
     isQwenReasoningModel(model) ||
     isGrokReasoningModel(model) ||
-    model.id.includes('glm-z1')
+    isHunyuanReasoningModel(model) ||
+    isPerplexityReasoningModel(model) ||
+    isZhipuReasoningModel(model) ||
+    model.id.toLowerCase().includes('magistral') ||
+    model.id.toLowerCase().includes('minimax-m1') ||
+    model.id.toLowerCase().includes('pangu-pro-moe')
   ) {
     return true
   }
 
-  return REASONING_REGEX.test(model.id) || model.type?.includes('reasoning') || false
+  return REASONING_REGEX.test(model.id) || false
 }
 
 export function isSupportedModel(model: OpenAI.Models.Model): boolean {
@@ -2415,7 +2849,7 @@ export function isNotSupportTemperatureAndTopP(model: Model): boolean {
     return true
   }
 
-  if (isOpenAIReasoningModel(model) || isOpenAIWebSearch(model)) {
+  if (isOpenAIReasoningModel(model) || isOpenAIChatCompletionOnlyModel(model) || isQwenMTModel(model)) {
     return true
   }
 
@@ -2423,14 +2857,12 @@ export function isNotSupportTemperatureAndTopP(model: Model): boolean {
 }
 
 export function isWebSearchModel(model: Model): boolean {
-  if (!model) {
+  if (!model || isEmbeddingModel(model) || isRerankModel(model)) {
     return false
   }
 
-  if (model.type) {
-    if (model.type.includes('web_search')) {
-      return true
-    }
+  if (isUserSelectedModelType(model, 'web_search') !== undefined) {
+    return isUserSelectedModelType(model, 'web_search')!
   }
 
   const provider = getProviderByModel(model)
@@ -2445,17 +2877,15 @@ export function isWebSearchModel(model: Model): boolean {
     return false
   }
 
-  if (model.id.includes('claude')) {
-    return CLAUDE_SUPPORTED_WEBSEARCH_REGEX.test(model.id)
+  const baseName = getLowerBaseModelName(model.id, '/')
+
+  // 不管哪个供应商都判断了
+  if (isAnthropicModel(model)) {
+    return CLAUDE_SUPPORTED_WEBSEARCH_REGEX.test(baseName)
   }
 
   if (provider.type === 'openai-response') {
-    if (
-      isOpenAILLMModel(model) &&
-      !isTextToImageModel(model) &&
-      !isOpenAIReasoningModel(model) &&
-      !GENERATE_IMAGE_MODELS.includes(model.id)
-    ) {
+    if (isOpenAIWebSearchModel(model)) {
       return true
     }
 
@@ -2463,45 +2893,40 @@ export function isWebSearchModel(model: Model): boolean {
   }
 
   if (provider.id === 'perplexity') {
-    return PERPLEXITY_SEARCH_MODELS.includes(model?.id)
+    return PERPLEXITY_SEARCH_MODELS.includes(baseName)
   }
 
   if (provider.id === 'aihubmix') {
-    if (
-      isOpenAILLMModel(model) &&
-      !isTextToImageModel(model) &&
-      !isOpenAIReasoningModel(model) &&
-      !GENERATE_IMAGE_MODELS.includes(model.id)
-    ) {
+    if (isOpenAIWebSearchModel(model)) {
       return true
     }
 
     const models = ['gemini-2.0-flash-search', 'gemini-2.0-flash-exp-search', 'gemini-2.0-pro-exp-02-05-search']
-    return models.includes(model?.id)
+    return models.includes(baseName)
   }
 
   if (provider?.type === 'openai') {
-    if (GEMINI_SEARCH_MODELS.includes(model?.id) || isOpenAIWebSearch(model)) {
+    if (GEMINI_SEARCH_REGEX.test(baseName) || isOpenAIWebSearchModel(model)) {
       return true
     }
   }
 
-  if (provider.id === 'gemini' || provider?.type === 'gemini') {
-    return GEMINI_SEARCH_MODELS.includes(model?.id)
+  if (provider.id === 'gemini' || provider?.type === 'gemini' || provider.type === 'vertexai') {
+    return GEMINI_SEARCH_REGEX.test(baseName)
   }
 
   if (provider.id === 'hunyuan') {
-    return model?.id !== 'hunyuan-lite'
+    return baseName !== 'hunyuan-lite'
   }
 
   if (provider.id === 'zhipu') {
-    return model?.id?.startsWith('glm-4-')
+    return baseName?.startsWith('glm-4-')
   }
 
   if (provider.id === 'dashscope') {
     const models = ['qwen-turbo', 'qwen-max', 'qwen-plus', 'qwq']
     // matches id like qwen-max-0919, qwen-max-latest
-    return models.some((i) => model.id.startsWith(i))
+    return models.some((i) => baseName.startsWith(i))
   }
 
   if (provider.id === 'openrouter') {
@@ -2513,6 +2938,20 @@ export function isWebSearchModel(model: Model): boolean {
   }
 
   return false
+}
+
+export function isOpenRouterBuiltInWebSearchModel(model: Model): boolean {
+  if (!model) {
+    return false
+  }
+
+  const provider = getProviderByModel(model)
+
+  if (provider.id !== 'openrouter') {
+    return false
+  }
+
+  return isOpenAIWebSearchChatCompletionOnlyModel(model) || model.id.includes('sonar')
 }
 
 export function isGenerateImageModel(model: Model): boolean {
@@ -2531,60 +2970,66 @@ export function isGenerateImageModel(model: Model): boolean {
   if (isEmbedding) {
     return false
   }
-  if (GENERATE_IMAGE_MODELS.includes(model.id)) {
+
+  const baseName = getLowerBaseModelName(model.id, '/')
+  if (GENERATE_IMAGE_MODELS.includes(baseName)) {
     return true
   }
   return false
 }
 
-export function getOpenAIWebSearchParams(assistant: Assistant, model: Model): Record<string, any> {
-  if (isWebSearchModel(model)) {
-    if (assistant.enableWebSearch) {
-      const webSearchTools = getWebSearchTools(model)
+export function isSupportedDisableGenerationModel(model: Model): boolean {
+  if (!model) {
+    return false
+  }
 
-      if (model.provider === 'grok') {
-        return {
-          search_parameters: {
-            mode: 'auto',
-            return_citations: true,
-            sources: [{ type: 'web' }, { type: 'x' }, { type: 'news' }]
-          }
-        }
-      }
+  return SUPPORTED_DISABLE_GENERATION_MODELS.includes(getLowerBaseModelName(model.id))
+}
 
-      if (model.provider === 'hunyuan') {
-        return { enable_enhancement: true, citation: true, search_info: true }
-      }
+export function getOpenAIWebSearchParams(model: Model, isEnableWebSearch?: boolean): Record<string, any> {
+  if (!isEnableWebSearch) {
+    return {}
+  }
 
-      if (model.provider === 'dashscope') {
-        return {
-          enable_search: true,
-          search_options: {
-            forced_search: true
-          }
-        }
-      }
+  const webSearchTools = getWebSearchTools(model)
 
-      if (model.provider === 'openrouter') {
-        return {
-          plugins: [{ id: 'web', search_prompts: WEB_SEARCH_PROMPT_FOR_OPENROUTER }]
-        }
-      }
-
-      if (isOpenAIWebSearch(model)) {
-        return {
-          web_search_options: {}
-        }
-      }
-
-      return {
-        tools: webSearchTools
-      }
-    } else {
-      if (model.provider === 'hunyuan') {
-        return { enable_enhancement: false }
+  if (model.provider === 'grok') {
+    return {
+      search_parameters: {
+        mode: 'auto',
+        return_citations: true,
+        sources: [{ type: 'web' }, { type: 'x' }, { type: 'news' }]
       }
     }
+  }
+
+  if (model.provider === 'hunyuan') {
+    return { enable_enhancement: true, citation: true, search_info: true }
+  }
+
+  if (model.provider === 'dashscope') {
+    return {
+      enable_search: true,
+      search_options: {
+        forced_search: true
+      }
+    }
+  }
+
+  if (isOpenAIWebSearchChatCompletionOnlyModel(model)) {
+    return {
+      web_search_options: {}
+    }
+  }
+
+  if (model.provider === 'openrouter') {
+    return {
+      plugins: [{ id: 'web', search_prompts: WEB_SEARCH_PROMPT_FOR_OPENROUTER }]
+    }
+  }
+
+  return {
+    tools: webSearchTools
   }
 
   return {}
@@ -2644,9 +3089,12 @@ export function groupQwenModels(models: Model[]): Record<string, Model[]> {
 
 export const THINKING_TOKEN_MAP: Record<string, { min: number; max: number }> = {
   // Gemini models
-  'gemini-.*$': { min: 0, max: 24576 },
+  'gemini-2\\.5-flash-lite.*$': { min: 512, max: 24576 },
+  'gemini-.*-flash.*$': { min: 0, max: 24576 },
+  'gemini-.*-pro.*$': { min: 128, max: 32768 },
 
   // Qwen models
+  'qwen3-235b-a22b-thinking(?:-[\\w-]+)$': { min: 0, max: 81_920 },
   'qwen-plus-.*$': { min: 0, max: 38912 },
   'qwen-turbo-.*$': { min: 0, max: 38912 },
   'qwen3-0\\.6b$': { min: 0, max: 30720 },
@@ -2665,4 +3113,56 @@ export const findTokenLimit = (modelId: string): { min: number; max: number } | 
     }
   }
   return undefined
+}
+
+// Doubao 支持思考模式的模型正则
+export const DOUBAO_THINKING_MODEL_REGEX =
+  /doubao-(?:1[.-]5-thinking-vision-pro|1[.-]5-thinking-pro-m|seed-1[.-]6(?:-flash)?(?!-(?:thinking)(?:-|$)))(?:-[\w-]+)*/i
+
+// 支持 auto 的 Doubao 模型 doubao-seed-1.6-xxx doubao-seed-1-6-xxx  doubao-1-5-thinking-pro-m-xxx
+export const DOUBAO_THINKING_AUTO_MODEL_REGEX =
+  /doubao-(1-5-thinking-pro-m|seed-1[.-]6)(?!-(?:flash|thinking)(?:-|$))(?:-[\w-]+)*/i
+
+export function isDoubaoThinkingAutoModel(model: Model): boolean {
+  return DOUBAO_THINKING_AUTO_MODEL_REGEX.test(model.id) || DOUBAO_THINKING_AUTO_MODEL_REGEX.test(model.name)
+}
+
+export const GEMINI_FLASH_MODEL_REGEX = new RegExp('gemini-.*-flash.*$')
+
+// 模型集合功能测试
+export const isVisionModels = (models: Model[]) => {
+  return models.every((model) => isVisionModel(model))
+}
+
+export const isGenerateImageModels = (models: Model[]) => {
+  return models.every((model) => isGenerateImageModel(model))
+}
+
+export const isAnthropicModel = (model?: Model): boolean => {
+  if (!model) {
+    return false
+  }
+
+  return getLowerBaseModelName(model.id).startsWith('claude')
+}
+
+export const isQwenMTModel = (model: Model): boolean => {
+  const name = getLowerBaseModelName(model.id)
+  return name.includes('qwen-mt')
+}
+
+export const isNotSupportedTextDelta = (model: Model): boolean => {
+  if (isQwenMTModel(model)) {
+    return true
+  }
+
+  return false
+}
+
+export const isNotSupportSystemMessageModel = (model: Model): boolean => {
+  if (isQwenMTModel(model) || isGemmaModel(model)) {
+    return true
+  }
+
+  return false
 }

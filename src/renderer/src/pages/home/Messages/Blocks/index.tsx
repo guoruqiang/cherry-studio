@@ -1,3 +1,4 @@
+import { loggerService } from '@logger'
 import type { RootState } from '@renderer/store'
 import { messageBlocksSelectors } from '@renderer/store/messageBlock'
 import type { ImageMessageBlock, MainTextMessageBlock, Message, MessageBlock } from '@renderer/types/newMessage'
@@ -16,6 +17,8 @@ import PlaceholderBlock from './PlaceholderBlock'
 import ThinkingBlock from './ThinkingBlock'
 import ToolBlock from './ToolBlock'
 import TranslationBlock from './TranslationBlock'
+
+const logger = loggerService.withContext('MessageBlockRenderer')
 
 interface AnimatedBlockWrapperProps {
   children: React.ReactNode
@@ -42,6 +45,7 @@ const blockWrapperVariants = {
 const AnimatedBlockWrapper: React.FC<AnimatedBlockWrapperProps> = ({ children, enableAnimation }) => {
   return (
     <motion.div
+      className="block-wrapper"
       variants={blockWrapperVariants}
       initial={enableAnimation ? 'hidden' : 'static'}
       animate={enableAnimation ? 'visible' : 'static'}>
@@ -85,7 +89,7 @@ const MessageBlockRenderer: React.FC<Props> = ({ blocks, message }) => {
           const groupKey = block.map((imageBlock) => imageBlock.id).join('-')
           return (
             <AnimatedBlockWrapper key={groupKey} enableAnimation={message.status.includes('ing')}>
-              <ImageBlockGroup>
+              <ImageBlockGroup count={block.length}>
                 {block.map((imageBlock) => (
                   <ImageBlock key={imageBlock.id} block={imageBlock as ImageMessageBlock} />
                 ))}
@@ -143,7 +147,7 @@ const MessageBlockRenderer: React.FC<Props> = ({ blocks, message }) => {
             blockComponent = <TranslationBlock key={block.id} block={block} />
             break
           default:
-            console.warn('Unsupported block type in MessageBlockRenderer:', (block as any).type, block)
+            logger.warn('Unsupported block type in MessageBlockRenderer:', (block as any).type, block)
             break
         }
 
@@ -161,20 +165,9 @@ const MessageBlockRenderer: React.FC<Props> = ({ blocks, message }) => {
 
 export default React.memo(MessageBlockRenderer)
 
-const ImageBlockGroup = styled.div`
+const ImageBlockGroup = styled.div<{ count: number }>`
   display: grid;
-  grid-template-columns: repeat(3, minmax(200px, 1fr));
+  grid-template-columns: repeat(${({ count }) => Math.min(count, 3)}, minmax(200px, 1fr));
   gap: 8px;
-  width: 100%;
   max-width: 960px;
-  > * {
-    min-width: 200px;
-  }
-  @media (min-width: 1536px) {
-    grid-template-columns: repeat(4, minmax(250px, 1fr));
-    max-width: 1280px;
-    > * {
-      min-width: 250px;
-    }
-  }
 `

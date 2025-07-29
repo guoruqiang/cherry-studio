@@ -1,4 +1,4 @@
-import CodeBlockView from '@renderer/components/CodeBlockView'
+import { CodeBlockView } from '@renderer/components/CodeBlockView'
 import React, { memo, useCallback } from 'react'
 
 interface Props {
@@ -27,7 +27,7 @@ const CodeBlock: React.FC<Props> = ({ children, className, id, onSave }) => {
       {children}
     </CodeBlockView>
   ) : (
-    <code className={className} style={{ textWrap: 'wrap' }}>
+    <code className={className} style={{ textWrap: 'wrap', fontSize: '95%', padding: '2px 4px' }}>
       {children}
     </code>
   )

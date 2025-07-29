@@ -4,8 +4,8 @@ import { useTheme } from '@renderer/context/ThemeProvider'
 import { useMinappPopup } from '@renderer/hooks/useMinappPopup'
 import { RootState, useAppDispatch } from '@renderer/store'
 import { setYuqueRepoId, setYuqueToken, setYuqueUrl } from '@renderer/store/settings'
-import { Button, Tooltip } from 'antd'
-import Input from 'antd/es/input/Input'
+import { Button, Space, Tooltip } from 'antd'
+import { Input } from 'antd'
 import { FC } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useSelector } from 'react-redux'
@@ -35,7 +35,7 @@ const YuqueSettings: FC = () => {
       return
     }
     if (!yuqueUrl) {
-      window.message.error(t('settings.data.yuque.check.empty_url'))
+      window.message.error(t('settings.data.yuque.check.empty_repo_url'))
       return
     }
 
@@ -100,14 +100,16 @@ const YuqueSettings: FC = () => {
           </Tooltip>
         </SettingRowTitle>
         <HStack alignItems="center" gap="5px" style={{ width: 315 }}>
-          <Input
-            type="password"
-            value={yuqueToken || ''}
-            onChange={handleYuqueTokenChange}
-            style={{ width: 250 }}
-            placeholder={t('settings.data.yuque.token_placeholder')}
-          />
-          <Button onClick={handleYuqueConnectionCheck}>{t('settings.data.yuque.check.button')}</Button>
+          <Space.Compact style={{ width: '100%' }}>
+            <Input.Password
+              value={yuqueToken || ''}
+              onChange={handleYuqueTokenChange}
+              onBlur={handleYuqueTokenChange}
+              placeholder={t('settings.data.yuque.token_placeholder')}
+              style={{ width: '100%' }}
+            />
+            <Button onClick={handleYuqueConnectionCheck}>{t('settings.data.yuque.check.button')}</Button>
+          </Space.Compact>
         </HStack>
       </SettingRow>
     </SettingGroup>

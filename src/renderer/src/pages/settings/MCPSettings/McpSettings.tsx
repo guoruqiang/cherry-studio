@@ -1,21 +1,24 @@
 import { DeleteOutlined, SaveOutlined } from '@ant-design/icons'
+import { loggerService } from '@logger'
 import { useTheme } from '@renderer/context/ThemeProvider'
 import { useMCPServer, useMCPServers } from '@renderer/hooks/useMCPServers'
 import MCPDescription from '@renderer/pages/settings/MCPSettings/McpDescription'
 import { MCPPrompt, MCPResource, MCPServer, MCPTool } from '@renderer/types'
 import { formatMcpError } from '@renderer/utils/error'
-import { Button, Flex, Form, Input, Radio, Select, Switch, Tabs } from 'antd'
+import { Badge, Button, Flex, Form, Input, Radio, Select, Switch, Tabs } from 'antd'
 import TextArea from 'antd/es/input/TextArea'
 import { ChevronDown } from 'lucide-react'
 import React, { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useLocation, useNavigate } from 'react-router'
+import { useNavigate, useParams } from 'react-router'
 import styled from 'styled-components'
 
 import { SettingContainer, SettingDivider, SettingGroup, SettingTitle } from '..'
 import MCPPromptsSection from './McpPrompt'
 import MCPResourcesSection from './McpResource'
 import MCPToolsSection from './McpTool'
+
+const logger = loggerService.withContext('McpSettings')
 
 interface MCPFormValues {
   name: string
@@ -28,6 +31,7 @@ interface MCPFormValues {
   env?: string
   isActive: boolean
   headers?: string
+  longRunning?: boolean
   timeout?: number
 
   provider?: string
@@ -41,7 +45,10 @@ interface Registry {
   url: string
 }
 
-const NpmRegistry: Registry[] = [{ name: '淘宝 NPM Mirror', url: 'https://registry.npmmirror.com' }]
+const NpmRegistry: Registry[] = [
+  { name: '淘宝 NPM Mirror', url: 'https://registry.npmmirror.com' },
+  { name: '自定义', url: 'custom' }
+]
 const PipRegistry: Registry[] = [
   { name: '清华大学', url: 'https://pypi.tuna.tsinghua.edu.cn/simple' },
   { name: '阿里云', url: 'http://mirrors.aliyun.com/pypi/simple/' },
@@ -69,10 +76,9 @@ const parseKeyValueString = (str: string): Record<string, string> => {
 
 const McpSettings: React.FC = () => {
   const { t } = useTranslation()
-  const {
-    server: { id: serverId }
-  } = useLocation().state as { server: MCPServer }
-  const server = useMCPServer(serverId).server as MCPServer
+  const { serverId } = useParams<{ serverId: string }>()
+  const decodedServerId = serverId ? decodeURIComponent(serverId) : ''
+  const server = useMCPServer(decodedServerId).server as MCPServer
   const { deleteMCPServer, updateMCPServer } = useMCPServers()
   const [serverType, setServerType] = useState<MCPServer['type']>('stdio')
   const [form] = Form.useForm<MCPFormValues>()
@@ -86,8 +92,11 @@ const McpSettings: React.FC = () => {
   const [resources, setResources] = useState<MCPResource[]>([])
   const [isShowRegistry, setIsShowRegistry] = useState(false)
   const [registry, setRegistry] = useState<Registry[]>()
+  const [customRegistryUrl, setCustomRegistryUrl] = useState('')
+  const [selectedRegistryType, setSelectedRegistryType] = useState<string>('')
 
   const [showAdvanced, setShowAdvanced] = useState(false)
+  const [serverVersion, setServerVersion] = useState<string | null>(null)
 
   const { theme } = useTheme()
 
@@ -107,14 +116,33 @@ const McpSettings: React.FC = () => {
         setIsShowRegistry(true)
 
         // Determine registry type based on command
+        let currentRegistry: Registry[] = []
         if (server.command.includes('uv') || server.command.includes('uvx')) {
+          currentRegistry = PipRegistry
           setRegistry(PipRegistry)
         } else if (
           server.command.includes('npx') ||
           server.command.includes('bun') ||
           server.command.includes('bunx')
         ) {
+          currentRegistry = NpmRegistry
           setRegistry(NpmRegistry)
+        }
+
+        // Check if the registryUrl is a custom URL (not in the predefined list)
+        const isCustomRegistry =
+          currentRegistry.length > 0 &&
+          !currentRegistry.some((reg) => reg.url === server.registryUrl) &&
+          server.registryUrl !== '' // empty string is default
+
+        if (isCustomRegistry) {
+          // Set custom registry state
+          setSelectedRegistryType('custom')
+          setCustomRegistryUrl(server.registryUrl)
+        } else {
+          // Reset custom registry state for predefined registries
+          setSelectedRegistryType('')
+          setCustomRegistryUrl('')
         }
       }
     }
@@ -128,6 +156,7 @@ const McpSettings: React.FC = () => {
       command: server.command || '',
       registryUrl: server.registryUrl || '',
       isActive: server.isActive,
+      longRunning: server.longRunning,
       timeout: server.timeout,
       args: server.args ? server.args.join('\n') : '',
       env: server.env
@@ -203,11 +232,23 @@ const McpSettings: React.FC = () => {
     }
   }
 
+  const fetchServerVersion = async () => {
+    if (server.isActive) {
+      try {
+        const version = await window.api.mcp.getServerVersion(server)
+        setServerVersion(version)
+      } catch (error) {
+        setServerVersion(null)
+      }
+    }
+  }
+
   useEffect(() => {
     if (server.isActive) {
       fetchTools()
       fetchPrompts()
       fetchResources()
+      fetchServerVersion()
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [server.id, server.isActive])
@@ -232,6 +273,7 @@ const McpSettings: React.FC = () => {
         registryUrl: values.registryUrl,
         searchKey: server.searchKey,
         timeout: values.timeout || server.timeout,
+        longRunning: values.longRunning,
         // Preserve existing advanced properties if not set in the form
         provider: values.provider || server.provider,
         providerUrl: values.providerUrl || server.providerUrl,
@@ -256,24 +298,29 @@ const McpSettings: React.FC = () => {
         mcpServer.headers = parseKeyValueString(values.headers)
       }
 
-      try {
-        await window.api.mcp.restartServer(mcpServer)
-        updateMCPServer({ ...mcpServer, isActive: true })
-        window.message.success({ content: t('settings.mcp.updateSuccess'), key: 'mcp-update-success' })
-        setLoading(false)
-        setIsFormChanged(false)
-      } catch (error: any) {
+      if (server.isActive) {
+        try {
+          await window.api.mcp.restartServer(mcpServer)
+          updateMCPServer({ ...mcpServer, isActive: true })
+          window.message.success({ content: t('settings.mcp.updateSuccess'), key: 'mcp-update-success' })
+          setIsFormChanged(false)
+        } catch (error: any) {
+          updateMCPServer({ ...mcpServer, isActive: false })
+          window.modal.error({
+            title: t('settings.mcp.updateError'),
+            content: error.message,
+            centered: true
+          })
+        }
+      } else {
         updateMCPServer({ ...mcpServer, isActive: false })
-        window.modal.error({
-          title: t('settings.mcp.updateError'),
-          content: error.message,
-          centered: true
-        })
-        setLoading(false)
+        window.message.success({ content: t('settings.mcp.updateSuccess'), key: 'mcp-update-success' })
+        setIsFormChanged(false)
       }
+      setLoading(false)
     } catch (error: any) {
       setLoading(false)
-      console.error('Failed to save MCP server settings:', error)
+      logger.error('Failed to save MCP server settings:', error)
     }
   }
 
@@ -294,6 +341,16 @@ const McpSettings: React.FC = () => {
   const onSelectRegistry = (url: string) => {
     const command = form.getFieldValue('command') || ''
 
+    // If custom registry is selected
+    if (url === 'custom') {
+      setSelectedRegistryType('custom')
+      // Don't set the registryUrl yet, wait for user input
+      return
+    }
+
+    setSelectedRegistryType('')
+    setCustomRegistryUrl('')
+
     // Add new registry env variables
     if (command.includes('uv') || command.includes('uvx')) {
       // envs['PIP_INDEX_URL'] = url
@@ -305,6 +362,12 @@ const McpSettings: React.FC = () => {
     }
 
     // Mark form as changed
+    setIsFormChanged(true)
+  }
+
+  const onCustomRegistryChange = (url: string) => {
+    setCustomRegistryUrl(url)
+    form.setFieldsValue({ registryUrl: url })
     setIsFormChanged(true)
   }
 
@@ -353,8 +416,12 @@ const McpSettings: React.FC = () => {
 
         const localResources = await window.api.mcp.listResources(server)
         setResources(localResources)
+
+        const version = await window.api.mcp.getServerVersion(server)
+        setServerVersion(version)
       } else {
         await window.api.mcp.stopServer(server)
+        setServerVersion(null)
       }
       updateMCPServer({ ...server, isActive: active })
     } catch (error: any) {
@@ -389,6 +456,33 @@ const McpSettings: React.FC = () => {
       const updatedServer = {
         ...server,
         disabledTools
+      }
+
+      // Save the updated server configuration
+      // await window.api.mcp.updateServer(updatedServer)
+      updateMCPServer(updatedServer)
+    },
+    [server, updateMCPServer]
+  )
+
+  // Handle toggling auto-approve for a tool
+  const handleToggleAutoApprove = useCallback(
+    async (tool: MCPTool, autoApprove: boolean) => {
+      let disabledAutoApproveTools = [...(server.disabledAutoApproveTools || [])]
+
+      if (autoApprove) {
+        disabledAutoApproveTools = disabledAutoApproveTools.filter((name) => name !== tool.name)
+      } else {
+        // Add tool to disabledTools if it's being disabled
+        if (!disabledAutoApproveTools.includes(tool.name)) {
+          disabledAutoApproveTools.push(tool.name)
+        }
+      }
+
+      // Update the server with new disabledTools
+      const updatedServer = {
+        ...server,
+        disabledAutoApproveTools
       }
 
       // Save the updated server configuration
@@ -484,7 +578,8 @@ const McpSettings: React.FC = () => {
                   name="registryUrl"
                   label={t('settings.mcp.registry')}
                   tooltip={t('settings.mcp.registryTooltip')}>
-                  <Radio.Group>
+                  <Radio.Group
+                    value={selectedRegistryType === 'custom' ? 'custom' : form.getFieldValue('registryUrl') || ''}>
                     <Radio
                       key="no-proxy"
                       value=""
@@ -504,6 +599,17 @@ const McpSettings: React.FC = () => {
                       </Radio>
                     ))}
                   </Radio.Group>
+                  {selectedRegistryType === 'custom' && (
+                    <Input
+                      placeholder={t(
+                        'settings.mcp.customRegistryPlaceholder',
+                        '请输入私有仓库地址，如: https://npm.company.com'
+                      )}
+                      value={customRegistryUrl}
+                      onChange={(e) => onCustomRegistryChange(e.target.value)}
+                      style={{ marginTop: 8 }}
+                    />
+                  )}
                 </Form.Item>
               )}
 
@@ -527,6 +633,9 @@ const McpSettings: React.FC = () => {
               </Form.Item>
             </>
           )}
+          <Form.Item name="longRunning" label={t('settings.mcp.longRunning', 'Long Running')} valuePropName="checked">
+            <Switch />
+          </Form.Item>
           <Form.Item
             name="timeout"
             label={t('settings.mcp.timeout', 'Timeout')}
@@ -557,11 +666,11 @@ const McpSettings: React.FC = () => {
               </Form.Item>
 
               <Form.Item name="providerUrl" label={t('settings.mcp.providerUrl', 'Provider URL')}>
-                <Input placeholder={t('settings.mcp.providerUrlPlaceholder', 'https://provider-website.com')} />
+                <Input placeholder="https://provider-website.com" />
               </Form.Item>
 
               <Form.Item name="logoUrl" label={t('settings.mcp.logoUrl', 'Logo URL')}>
-                <Input placeholder={t('settings.mcp.logoUrlPlaceholder', 'https://example.com/logo.png')} />
+                <Input placeholder="https://example.com/logo.png" />
               </Form.Item>
 
               <Form.Item name="tags" label={t('settings.mcp.tags', 'Tags')}>
@@ -592,7 +701,14 @@ const McpSettings: React.FC = () => {
       {
         key: 'tools',
         label: t('settings.mcp.tabs.tools'),
-        children: <MCPToolsSection tools={tools} server={server} onToggleTool={handleToggleTool} />
+        children: (
+          <MCPToolsSection
+            tools={tools}
+            server={server}
+            onToggleTool={handleToggleTool}
+            onToggleAutoApprove={handleToggleAutoApprove}
+          />
+        )
       },
       {
         key: 'prompts',
@@ -612,7 +728,10 @@ const McpSettings: React.FC = () => {
       <SettingGroup style={{ marginBottom: 0, borderRadius: 'var(--list-item-border-radius)' }}>
         <SettingTitle>
           <Flex justify="space-between" align="center" gap={5} style={{ marginRight: 10 }}>
-            <ServerName className="text-nowrap">{server?.name}</ServerName>
+            <Flex align="center" gap={8}>
+              <ServerName className="text-nowrap">{server?.name}</ServerName>
+              {serverVersion && <VersionBadge count={serverVersion} color="blue" />}
+            </Flex>
             <Button danger icon={<DeleteOutlined />} type="text" onClick={() => onDeleteMcpServer(server)} />
           </Flex>
           <Flex align="center" gap={16}>
@@ -657,6 +776,21 @@ const AdvancedSettingsButton = styled.div`
   color: var(--color-primary);
   display: flex;
   align-items: center;
+`
+
+const VersionBadge = styled(Badge)`
+  .ant-badge-count {
+    background-color: var(--color-primary);
+    color: white;
+    font-size: 11px;
+    font-weight: 500;
+    padding: 0 6px;
+    height: 18px;
+    line-height: 18px;
+    border-radius: 9px;
+    min-width: 18px;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+  }
 `
 
 export default McpSettings

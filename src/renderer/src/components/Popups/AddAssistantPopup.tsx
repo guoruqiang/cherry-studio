@@ -141,7 +141,10 @@ const PopupContainer: React.FC<Props> = ({ resolve }) => {
   }
 
   useEffect(() => {
-    open && setTimeout(() => inputRef.current?.focus(), 0)
+    if (!open) return
+
+    const timer = setTimeout(() => inputRef.current?.focus(), 0)
+    return () => clearTimeout(timer)
   }, [open])
 
   return (
@@ -157,6 +160,9 @@ const PopupContainer: React.FC<Props> = ({ resolve }) => {
           padding: 0,
           overflow: 'hidden',
           paddingBottom: 20
+        },
+        body: {
+          padding: 0
         }
       }}
       closeIcon={null}

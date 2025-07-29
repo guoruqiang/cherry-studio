@@ -1,16 +1,31 @@
+import { loggerService } from '@logger'
 import { Client } from '@notionhq/client'
-import db from '@renderer/databases'
 import i18n from '@renderer/i18n'
+import { getProviderLabel } from '@renderer/i18n/label'
 import { getMessageTitle } from '@renderer/services/MessagesService'
 import store from '@renderer/store'
 import { setExportState } from '@renderer/store/runtime'
 import type { Topic } from '@renderer/types'
 import type { Message } from '@renderer/types/newMessage'
 import { removeSpecialCharactersForFileName } from '@renderer/utils/file'
-import { convertMathFormula } from '@renderer/utils/markdown'
+import { convertMathFormula, markdownToPlainText } from '@renderer/utils/markdown'
 import { getCitationContent, getMainTextContent, getThinkingContent } from '@renderer/utils/messageUtils/find'
 import { markdownToBlocks } from '@tryfabric/martian'
 import dayjs from 'dayjs'
+import { appendBlocks } from 'notion-helper' // 引入 notion-helper 的 appendBlocks 函数
+
+const logger = loggerService.withContext('Utils:export')
+
+/**
+ * 获取话题的消息列表，使用TopicManager确保消息被正确加载
+ * 这样可以避免从未打开过的话题导出为空的问题
+ * @param topicId 话题ID
+ * @returns 话题消息列表
+ */
+async function fetchTopicMessages(topicId: string): Promise<Message[]> {
+  const { TopicManager } = await import('@renderer/hooks/useTopic')
+  return await TopicManager.getTopicMessages(topicId)
+}
 
 /**
  * 从消息内容中提取标题，限制长度并处理换行和标点符号。用于导出功能。
@@ -42,7 +57,7 @@ export function getTitleFromString(str: string, length: number = 80) {
   return title
 }
 
-const getRoleText = (role: string, modelName?: string, modelProvider?: string) => {
+const getRoleText = (role: string, modelName?: string, providerId?: string) => {
   const { showModelNameInMarkdown, showModelProviderInMarkdown } = store.getState().settings
 
   if (role === 'user') {
@@ -53,14 +68,14 @@ const getRoleText = (role: string, modelName?: string, modelProvider?: string) =
     let assistantText = '🤖 '
     if (showModelNameInMarkdown && modelName) {
       assistantText += `${modelName}`
-      if (showModelProviderInMarkdown && modelProvider) {
-        const providerDisplayName = i18n.t(`provider.${modelProvider}`, { defaultValue: modelProvider })
+      if (showModelProviderInMarkdown && providerId) {
+        const providerDisplayName = getProviderLabel(providerId) ?? providerId
         assistantText += ` | ${providerDisplayName}`
         return assistantText
       }
       return assistantText
-    } else if (showModelProviderInMarkdown && modelProvider) {
-      const providerDisplayName = i18n.t(`provider.${modelProvider}`, { defaultValue: modelProvider })
+    } else if (showModelProviderInMarkdown && providerId) {
+      const providerDisplayName = getProviderLabel(providerId) ?? providerId
       assistantText += `Assistant | ${providerDisplayName}`
       return assistantText
     }
@@ -68,10 +83,93 @@ const getRoleText = (role: string, modelName?: string, modelProvider?: string) =
   }
 }
 
-const createBaseMarkdown = (message: Message, includeReasoning: boolean = false) => {
+/**
+ * 处理文本中的引用标记
+ * @param content 原始文本内容
+ * @param mode 处理模式：'remove' 移除引用，'normalize' 标准化为Markdown格式
+ * @returns 处理后的文本
+ */
+export const processCitations = (content: string, mode: 'remove' | 'normalize' = 'remove'): string => {
+  // 使用正则表达式匹配Markdown代码块
+  const codeBlockRegex = /(```[a-zA-Z]*\n[\s\S]*?\n```)/g
+  const parts = content.split(codeBlockRegex)
+
+  const processedParts = parts.map((part, index) => {
+    // 如果是代码块(奇数索引),则原样返回
+    if (index % 2 === 1) {
+      return part
+    }
+
+    let result = part
+
+    if (mode === 'remove') {
+      // 移除各种形式的引用标记
+      result = result
+        .replace(/\[<sup[^>]*data-citation[^>]*>\d+<\/sup>\]\([^)]*\)/g, '')
+        .replace(/\[<sup[^>]*>\d+<\/sup>\]\([^)]*\)/g, '')
+        .replace(/<sup[^>]*data-citation[^>]*>\d+<\/sup>/g, '')
+        .replace(/\[(\d+)\](?!\()/g, '')
+    } else if (mode === 'normalize') {
+      // 标准化引用格式为Markdown脚注格式
+      result = result
+        // 将 [<sup data-citation='...'>数字</sup>](链接) 转换为 [^数字]
+        .replace(/\[<sup[^>]*data-citation[^>]*>(\d+)<\/sup>\]\([^)]*\)/g, '[^$1]')
+        // 将 [<sup>数字</sup>](链接) 转换为 [^数字]
+        .replace(/\[<sup[^>]*>(\d+)<\/sup>\]\([^)]*\)/g, '[^$1]')
+        // 将独立的 <sup data-citation='...'>数字</sup> 转换为 [^数字]
+        .replace(/<sup[^>]*data-citation[^>]*>(\d+)<\/sup>/g, '[^$1]')
+        // 将 [数字] 转换为 [^数字]（但要小心不要转换其他方括号内容）
+        .replace(/\[(\d+)\](?!\()/g, '[^$1]')
+    }
+
+    // 按行处理，保留Markdown结构
+    const lines = result.split('\n')
+    const processedLines = lines.map((line) => {
+      // 如果是引用块或其他特殊格式，不要修改空格
+      if (line.match(/^>|^#{1,6}\s|^\s*[-*+]\s|^\s*\d+\.\s|^\s{4,}/)) {
+        return line.replace(/[ ]+/g, ' ').replace(/[ ]+$/g, '')
+      }
+      // 普通文本行，清理多余空格但保留基本格式
+      return line.replace(/[ ]+/g, ' ').trim()
+    })
+
+    return processedLines.join('\n')
+  })
+
+  return processedParts.join('').trim()
+}
+
+/**
+ * 标准化引用内容为Markdown脚注格式
+ * @param citations 引用列表
+ * @returns Markdown脚注格式的引用内容
+ */
+const formatCitationsAsFootnotes = (citations: string): string => {
+  if (!citations.trim()) return ''
+
+  // 将引用列表转换为脚注格式
+  const lines = citations.split('\n\n')
+  const footnotes = lines.map((line) => {
+    const match = line.match(/^\[(\d+)\]\s*(.+)/)
+    if (match) {
+      const [, num, content] = match
+      return `[^${num}]: ${content}`
+    }
+    return line
+  })
+
+  return footnotes.join('\n\n')
+}
+
+const createBaseMarkdown = (
+  message: Message,
+  includeReasoning: boolean = false,
+  excludeCitations: boolean = false,
+  normalizeCitations: boolean = true
+) => {
   const { forceDollarMathInMarkdown } = store.getState().settings
   const roleText = getRoleText(message.role, message.model?.name, message.model?.provider)
-  const titleSection = `### ${roleText}`
+  const titleSection = `## ${roleText}`
   let reasoningSection = ''
 
   if (includeReasoning) {
@@ -97,50 +195,107 @@ const createBaseMarkdown = (message: Message, includeReasoning: boolean = false)
     <summary>${i18n.t('common.reasoning_content')}</summary>
     ${reasoningContent}
   </details>
-</div>`
+</div>
+`
     }
   }
 
   const content = getMainTextContent(message)
-  const citation = getCitationContent(message)
-  const contentSection = forceDollarMathInMarkdown ? convertMathFormula(content) : content
+  let citation = excludeCitations ? '' : getCitationContent(message)
 
-  return { titleSection, reasoningSection, contentSection, citation }
-}
+  let processedContent = forceDollarMathInMarkdown ? convertMathFormula(content) : content
 
-export const messageToMarkdown = (message: Message) => {
-  const { titleSection, contentSection, citation } = createBaseMarkdown(message)
-  return [titleSection, '', contentSection, citation].join('\n\n')
-}
-
-export const messageToMarkdownWithReasoning = (message: Message) => {
-  const { titleSection, reasoningSection, contentSection, citation } = createBaseMarkdown(message, true)
-  return [titleSection, '', reasoningSection + contentSection, citation].join('\n\n')
-}
-
-export const messagesToMarkdown = (messages: Message[], exportReasoning?: boolean) => {
-  return messages
-    .map((message) => (exportReasoning ? messageToMarkdownWithReasoning(message) : messageToMarkdown(message)))
-    .join('\n\n---\n\n')
-}
-
-export const topicToMarkdown = async (topic: Topic, exportReasoning?: boolean) => {
-  const topicName = `# ${topic.name}`
-  const topicMessages = await db.topics.get(topic.id)
-
-  if (topicMessages) {
-    return topicName + '\n\n' + messagesToMarkdown(topicMessages.messages, exportReasoning)
+  // 处理引用标记
+  if (excludeCitations) {
+    processedContent = processCitations(processedContent, 'remove')
+  } else if (normalizeCitations) {
+    processedContent = processCitations(processedContent, 'normalize')
+    citation = formatCitationsAsFootnotes(citation)
   }
 
-  return ''
+  return { titleSection, reasoningSection, contentSection: processedContent, citation }
 }
 
-export const exportTopicAsMarkdown = async (topic: Topic, exportReasoning?: boolean) => {
+export const messageToMarkdown = (message: Message, excludeCitations?: boolean) => {
+  const { excludeCitationsInExport, standardizeCitationsInExport } = store.getState().settings
+  const shouldExcludeCitations = excludeCitations ?? excludeCitationsInExport
+  const { titleSection, contentSection, citation } = createBaseMarkdown(
+    message,
+    false,
+    shouldExcludeCitations,
+    standardizeCitationsInExport
+  )
+  return [titleSection, '', contentSection, citation].join('\n')
+}
+
+export const messageToMarkdownWithReasoning = (message: Message, excludeCitations?: boolean) => {
+  const { excludeCitationsInExport, standardizeCitationsInExport } = store.getState().settings
+  const shouldExcludeCitations = excludeCitations ?? excludeCitationsInExport
+  const { titleSection, reasoningSection, contentSection, citation } = createBaseMarkdown(
+    message,
+    true,
+    shouldExcludeCitations,
+    standardizeCitationsInExport
+  )
+  return [titleSection, '', reasoningSection + contentSection, citation].join('\n')
+}
+
+export const messagesToMarkdown = (messages: Message[], exportReasoning?: boolean, excludeCitations?: boolean) => {
+  return messages
+    .map((message) =>
+      exportReasoning
+        ? messageToMarkdownWithReasoning(message, excludeCitations)
+        : messageToMarkdown(message, excludeCitations)
+    )
+    .join('\n---\n')
+}
+
+const formatMessageAsPlainText = (message: Message): string => {
+  const roleText = message.role === 'user' ? 'User:' : 'Assistant:'
+  const content = getMainTextContent(message)
+  const plainTextContent = markdownToPlainText(content).trim()
+  return `${roleText}\n${plainTextContent}`
+}
+
+export const messageToPlainText = (message: Message): string => {
+  const content = getMainTextContent(message)
+  return markdownToPlainText(content).trim()
+}
+
+const messagesToPlainText = (messages: Message[]): string => {
+  return messages.map(formatMessageAsPlainText).join('\n\n')
+}
+
+export const topicToMarkdown = async (topic: Topic, exportReasoning?: boolean, excludeCitations?: boolean) => {
+  const topicName = `# ${topic.name}`
+
+  const messages = await fetchTopicMessages(topic.id)
+
+  if (messages && messages.length > 0) {
+    return topicName + '\n\n' + messagesToMarkdown(messages, exportReasoning, excludeCitations)
+  }
+
+  return topicName
+}
+
+export const topicToPlainText = async (topic: Topic): Promise<string> => {
+  const topicName = markdownToPlainText(topic.name).trim()
+
+  const topicMessages = await fetchTopicMessages(topic.id)
+
+  if (topicMessages && topicMessages.length > 0) {
+    return topicName + '\n\n' + messagesToPlainText(topicMessages)
+  }
+
+  return topicName
+}
+
+export const exportTopicAsMarkdown = async (topic: Topic, exportReasoning?: boolean, excludeCitations?: boolean) => {
   const { markdownExportPath } = store.getState().settings
   if (!markdownExportPath) {
     try {
       const fileName = removeSpecialCharactersForFileName(topic.name) + '.md'
-      const markdown = await topicToMarkdown(topic, exportReasoning)
+      const markdown = await topicToMarkdown(topic, exportReasoning, excludeCitations)
       const result = await window.api.file.save(fileName, markdown)
       if (result) {
         window.message.success({
@@ -150,27 +305,35 @@ export const exportTopicAsMarkdown = async (topic: Topic, exportReasoning?: bool
       }
     } catch (error: any) {
       window.message.error({ content: i18n.t('message.error.markdown.export.specified'), key: 'markdown-error' })
+      logger.debug(error)
     }
   } else {
     try {
       const timestamp = dayjs().format('YYYY-MM-DD-HH-mm-ss')
       const fileName = removeSpecialCharactersForFileName(topic.name) + ` ${timestamp}.md`
-      const markdown = await topicToMarkdown(topic, exportReasoning)
+      const markdown = await topicToMarkdown(topic, exportReasoning, excludeCitations)
       await window.api.file.write(markdownExportPath + '/' + fileName, markdown)
       window.message.success({ content: i18n.t('message.success.markdown.export.preconf'), key: 'markdown-success' })
     } catch (error: any) {
       window.message.error({ content: i18n.t('message.error.markdown.export.preconf'), key: 'markdown-error' })
+      logger.debug(error)
     }
   }
 }
 
-export const exportMessageAsMarkdown = async (message: Message, exportReasoning?: boolean) => {
+export const exportMessageAsMarkdown = async (
+  message: Message,
+  exportReasoning?: boolean,
+  excludeCitations?: boolean
+) => {
   const { markdownExportPath } = store.getState().settings
   if (!markdownExportPath) {
     try {
       const title = await getMessageTitle(message)
       const fileName = removeSpecialCharactersForFileName(title) + '.md'
-      const markdown = exportReasoning ? messageToMarkdownWithReasoning(message) : messageToMarkdown(message)
+      const markdown = exportReasoning
+        ? messageToMarkdownWithReasoning(message, excludeCitations)
+        : messageToMarkdown(message, excludeCitations)
       const result = await window.api.file.save(fileName, markdown)
       if (result) {
         window.message.success({
@@ -180,46 +343,27 @@ export const exportMessageAsMarkdown = async (message: Message, exportReasoning?
       }
     } catch (error: any) {
       window.message.error({ content: i18n.t('message.error.markdown.export.specified'), key: 'markdown-error' })
+      logger.debug(error)
     }
   } else {
     try {
       const timestamp = dayjs().format('YYYY-MM-DD-HH-mm-ss')
       const title = await getMessageTitle(message)
       const fileName = removeSpecialCharactersForFileName(title) + ` ${timestamp}.md`
-      const markdown = exportReasoning ? messageToMarkdownWithReasoning(message) : messageToMarkdown(message)
+      const markdown = exportReasoning
+        ? messageToMarkdownWithReasoning(message, excludeCitations)
+        : messageToMarkdown(message, excludeCitations)
       await window.api.file.write(markdownExportPath + '/' + fileName, markdown)
       window.message.success({ content: i18n.t('message.success.markdown.export.preconf'), key: 'markdown-success' })
     } catch (error: any) {
       window.message.error({ content: i18n.t('message.error.markdown.export.preconf'), key: 'markdown-error' })
+      logger.debug(error)
     }
   }
 }
 
 const convertMarkdownToNotionBlocks = async (markdown: string) => {
   return markdownToBlocks(markdown)
-}
-
-const splitNotionBlocks = (blocks: any[]) => {
-  // Notion API限制单次传输100块
-  const notionSplitSize = 95
-
-  const pages: any[][] = []
-  let currentPage: any[] = []
-
-  blocks.forEach((block) => {
-    if (currentPage.length >= notionSplitSize) {
-      window.message.info({ content: i18n.t('message.info.notion.block_reach_limit'), key: 'notion-block-reach-limit' })
-      pages.push(currentPage)
-      currentPage = []
-    }
-    currentPage.push(block)
-  })
-
-  if (currentPage.length > 0) {
-    pages.push(currentPage)
-  }
-
-  return pages
 }
 
 const convertThinkingToNotionBlocks = async (thinkingContent: string): Promise<any[]> => {
@@ -275,6 +419,8 @@ const executeNotionExport = async (title: string, allBlocks: any[]): Promise<any
 
   setExportState({ isExporting: true })
 
+  title = title.slice(0, 29) + '...'
+
   const { notionDatabaseID, notionApiKey } = store.getState().settings
   if (!notionApiKey || !notionDatabaseID) {
     window.message.error({ content: i18n.t('message.error.notion.no_api_key'), key: 'notion-no-apikey-error' })
@@ -284,65 +430,48 @@ const executeNotionExport = async (title: string, allBlocks: any[]): Promise<any
 
   try {
     const notion = new Client({ auth: notionApiKey })
-    const blockPages = splitNotionBlocks(allBlocks)
 
-    if (blockPages.length === 0) {
+    if (allBlocks.length === 0) {
       throw new Error('No content to export')
     }
 
-    // 创建主页面和子页面
+    window.message.loading({
+      content: i18n.t('message.loading.notion.preparing'),
+      key: 'notion-preparing',
+      duration: 0
+    })
     let mainPageResponse: any = null
     let parentBlockId: string | null = null
 
-    for (let i = 0; i < blockPages.length; i++) {
-      const pageBlocks = blockPages[i]
-
-      // 导出进度提示
-      if (blockPages.length > 1) {
-        window.message.loading({
-          content: i18n.t('message.loading.notion.exporting_progress', {
-            current: i + 1,
-            total: blockPages.length
-          }),
-          key: 'notion-export-progress'
-        })
-      } else {
-        window.message.loading({
-          content: i18n.t('message.loading.notion.preparing'),
-          key: 'notion-export-progress'
-        })
-      }
-
-      if (i === 0) {
-        // 创建主页面
-        const response = await notion.pages.create({
-          parent: { database_id: notionDatabaseID },
-          properties: {
-            [store.getState().settings.notionPageNameKey || 'Name']: {
-              title: [{ text: { content: title } }]
-            }
-          },
-          children: pageBlocks
-        })
-        mainPageResponse = response
-        parentBlockId = response.id
-      } else {
-        // 追加后续页面的块到主页面
-        if (!parentBlockId) {
-          throw new Error('Parent block ID is null')
+    const response = await notion.pages.create({
+      parent: { database_id: notionDatabaseID },
+      properties: {
+        [store.getState().settings.notionPageNameKey || 'Name']: {
+          title: [{ text: { content: title } }]
         }
-        await notion.blocks.children.append({
-          block_id: parentBlockId,
-          children: pageBlocks
-        })
       }
+    })
+    mainPageResponse = response
+    parentBlockId = response.id
+    window.message.destroy('notion-preparing')
+    window.message.loading({
+      content: i18n.t('message.loading.notion.exporting_progress'),
+      key: 'notion-exporting',
+      duration: 0
+    })
+    if (allBlocks.length > 0) {
+      await appendBlocks({
+        block_id: parentBlockId,
+        children: allBlocks,
+        client: notion
+      })
     }
-
-    const messageKey = blockPages.length > 1 ? 'notion-export-progress' : 'notion-success'
-    window.message.success({ content: i18n.t('message.success.notion.export'), key: messageKey })
+    window.message.destroy('notion-exporting')
+    window.message.success({ content: i18n.t('message.success.notion.export'), key: 'notion-success' })
     return mainPageResponse
   } catch (error: any) {
     window.message.error({ content: i18n.t('message.error.notion.export'), key: 'notion-export-progress' })
+    logger.debug(error)
     return null
   } finally {
     setExportState({ isExporting: false })
@@ -370,11 +499,9 @@ export const exportMessageToNotion = async (title: string, content: string, mess
 }
 
 export const exportTopicToNotion = async (topic: Topic) => {
-  const { notionExportReasoning } = store.getState().settings
+  const { notionExportReasoning, excludeCitationsInExport } = store.getState().settings
 
-  // 获取话题消息
-  const topicRecord = await db.topics.get(topic.id)
-  const topicMessages = topicRecord?.messages || []
+  const topicMessages = await fetchTopicMessages(topic.id)
 
   // 创建话题标题块
   const titleBlocks = await convertMarkdownToNotionBlocks(`# ${topic.name}`)
@@ -384,7 +511,7 @@ export const exportTopicToNotion = async (topic: Topic) => {
 
   for (const message of topicMessages) {
     // 将单个消息转换为markdown
-    const messageMarkdown = messageToMarkdown(message)
+    const messageMarkdown = messageToMarkdown(message, excludeCitationsInExport)
     const messageBlocks = await convertMarkdownToNotionBlocks(messageMarkdown)
 
     if (notionExportReasoning) {
@@ -468,6 +595,7 @@ export const exportMarkdownToYuque = async (title: string, content: string) => {
     })
     return data
   } catch (error: any) {
+    logger.debug(error)
     window.message.error({
       content: i18n.t('message.error.yuque.export'),
       key: 'yuque-error'
@@ -497,7 +625,7 @@ export const exportMarkdownToObsidian = async (attributes: any) => {
     let isMarkdownFile = false
 
     if (!obsidianVault) {
-      window.message.error(i18n.t('chat.topics.export.obsidian_not_configured'))
+      window.message.error(i18n.t('chat.topics.export.obsidian_no_vault_selected'))
       return
     }
 
@@ -541,7 +669,7 @@ export const exportMarkdownToObsidian = async (attributes: any) => {
     window.open(obsidianUrl)
     window.message.success(i18n.t('chat.topics.export.obsidian_export_success'))
   } catch (error) {
-    console.error('导出到Obsidian失败:', error)
+    logger.error('导出到Obsidian失败:', error as Error)
     window.message.error(i18n.t('chat.topics.export.obsidian_export_failed'))
   }
 }
@@ -553,13 +681,13 @@ export const exportMarkdownToObsidian = async (attributes: any) => {
  */
 function transformObsidianFileName(fileName: string): string {
   const platform = window.navigator.userAgent
-  const isWindows = /win/i.test(platform)
+  const isWin = /win/i.test(platform)
   const isMac = /mac/i.test(platform)
 
   // 删除Obsidian 全平台无效字符
   let sanitized = fileName.replace(/[#|\\^\\[\]]/g, '')
 
-  if (isWindows) {
+  if (isWin) {
     // Windows 的清理
     sanitized = sanitized
       .replace(/[<>:"\\/\\|?*]/g, '') // 移除无效字符
@@ -592,7 +720,7 @@ function transformObsidianFileName(fileName: string): string {
 }
 
 export const exportMarkdownToJoplin = async (title: string, contentOrMessages: string | Message | Message[]) => {
-  const { joplinUrl, joplinToken, joplinExportReasoning } = store.getState().settings
+  const { joplinUrl, joplinToken, joplinExportReasoning, excludeCitationsInExport } = store.getState().settings
 
   if (!joplinUrl || !joplinToken) {
     window.message.error(i18n.t('message.error.joplin.no_config'))
@@ -603,12 +731,12 @@ export const exportMarkdownToJoplin = async (title: string, contentOrMessages: s
   if (typeof contentOrMessages === 'string') {
     content = contentOrMessages
   } else if (Array.isArray(contentOrMessages)) {
-    content = messagesToMarkdown(contentOrMessages, joplinExportReasoning)
+    content = messagesToMarkdown(contentOrMessages, joplinExportReasoning, excludeCitationsInExport)
   } else {
     // 单条Message
     content = joplinExportReasoning
-      ? messageToMarkdownWithReasoning(contentOrMessages)
-      : messageToMarkdown(contentOrMessages)
+      ? messageToMarkdownWithReasoning(contentOrMessages, excludeCitationsInExport)
+      : messageToMarkdown(contentOrMessages, excludeCitationsInExport)
   }
 
   try {
@@ -636,8 +764,9 @@ export const exportMarkdownToJoplin = async (title: string, contentOrMessages: s
 
     window.message.success(i18n.t('message.success.joplin.export'))
     return
-  } catch (error) {
+  } catch (error: any) {
     window.message.error(i18n.t('message.error.joplin.export'))
+    logger.debug(error)
     return
   }
 }
@@ -684,10 +813,10 @@ export const exportMarkdownToSiyuan = async (title: string, content: string) => 
 
     // 确保根路径以/开头
     const rootPath = siyuanRootPath?.startsWith('/') ? siyuanRootPath : `/${siyuanRootPath || 'CherryStudio'}`
-
+    const renderedRootPath = await renderSprigTemplate(siyuanApiUrl, siyuanToken, rootPath)
     // 创建文档
     const docTitle = `${title.replace(/[#|\\^\\[\]]/g, '')}`
-    const docPath = `${rootPath}/${docTitle}`
+    const docPath = `${renderedRootPath}/${docTitle}`
 
     // 创建文档
     await createSiyuanDoc(siyuanApiUrl, siyuanToken, siyuanBoxId, docPath, content)
@@ -697,7 +826,7 @@ export const exportMarkdownToSiyuan = async (title: string, content: string) => 
       key: 'siyuan-success'
     })
   } catch (error) {
-    console.error('导出到思源笔记失败:', error)
+    logger.error('导出到思源笔记失败:', error as Error)
     window.message.error({
       content: i18n.t('message.error.siyuan.export') + (error instanceof Error ? `: ${error.message}` : ''),
       key: 'siyuan-error'
@@ -705,6 +834,30 @@ export const exportMarkdownToSiyuan = async (title: string, content: string) => 
   } finally {
     setExportState({ isExporting: false })
   }
+}
+/**
+ * 渲染 思源笔记 Sprig 模板字符串
+ * @param apiUrl 思源 API 地址
+ * @param token 思源 API Token
+ * @param template Sprig 模板
+ * @returns 渲染后的字符串
+ */
+async function renderSprigTemplate(apiUrl: string, token: string, template: string): Promise<string> {
+  const response = await fetch(`${apiUrl}/api/template/renderSprig`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Token ${token}`
+    },
+    body: JSON.stringify({ template })
+  })
+
+  const data = await response.json()
+  if (data.code !== 0) {
+    throw new Error(`${data.msg || i18n.t('message.error.unknown')}`)
+  }
+
+  return data.data
 }
 
 /**
