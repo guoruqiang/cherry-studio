@@ -10,7 +10,7 @@ import { useTranslation } from 'react-i18next'
 import styled from 'styled-components'
 
 import MinappSettingsPopup from './MiniappSettings/MinappSettingsPopup'
-import NewAppButton from './NewAppButton'
+// import NewAppButton from './NewAppButton'
 
 const AppsPage: FC = () => {
   const { t } = useTranslation()
@@ -92,7 +92,7 @@ const AppsPage: FC = () => {
                 {filteredApps.map((app) => (
                   <App key={app.id} app={app} />
                 ))}
-                <NewAppButton />
+                {/* <NewAppButton /> */}
               </AppsContainer>
             </AppsContainerWrapper>
           </RightContainer>

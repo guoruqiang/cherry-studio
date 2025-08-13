@@ -1,9 +1,9 @@
 import App from '@renderer/components/MinApp/MinApp'
 import { useMinapps } from '@renderer/hooks/useMinapps'
 import { useRuntime } from '@renderer/hooks/useRuntime'
-import { useSettings } from '@renderer/hooks/useSettings'
+
 import tabsService from '@renderer/services/TabsService'
-import { FileSearch, Folder, Languages, LayoutGrid, Palette, Sparkle, Terminal } from 'lucide-react'
+import { FileSearch, Folder, Languages, Sparkle, Terminal } from 'lucide-react'
 import { FC, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
@@ -12,28 +12,16 @@ import styled from 'styled-components'
 const LaunchpadPage: FC = () => {
   const navigate = useNavigate()
   const { t } = useTranslation()
-  const { defaultPaintingProvider } = useSettings()
+
   const { pinned } = useMinapps()
   const { openedKeepAliveMinapps } = useRuntime()
 
   const appMenuItems = [
     {
-      icon: <LayoutGrid size={32} className="icon" />,
-      text: t('title.apps'),
-      path: '/apps',
-      bgColor: 'linear-gradient(135deg, #8B5CF6, #A855F7)' // 小程序：紫色，代表多功能和灵活性
-    },
-    {
       icon: <FileSearch size={32} className="icon" />,
       text: t('title.knowledge'),
       path: '/knowledge',
       bgColor: 'linear-gradient(135deg, #10B981, #34D399)' // 知识库：翠绿色，代表生长和知识
-    },
-    {
-      icon: <Palette size={32} className="icon" />,
-      text: t('title.paintings'),
-      path: `/paintings/${defaultPaintingProvider}`,
-      bgColor: 'linear-gradient(135deg, #EC4899, #F472B6)' // 绘画：活力粉色，代表创造力和艺术
     },
     {
       icon: <Sparkle size={32} className="icon" />,

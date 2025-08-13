@@ -35,7 +35,6 @@ const AboutSettings: FC = () => {
       }
 
       if (update.downloaded) {
-        await handleSaveData()
         window.api.showUpdateDialog()
         return
       }
@@ -57,9 +56,6 @@ const AboutSettings: FC = () => {
   const onOpenWebsite = (url: string) => {
     window.api.openWebsite(url)
   }
-
-  // don't support downgrade, so we only check if the version is different
-  const hasNewVersion = update?.info?.version && version ? update.info.version !== version : false
 
   const currentChannelByVersion =
     [
