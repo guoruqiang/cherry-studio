@@ -1,6 +1,7 @@
 import 'katex/dist/katex.min.css'
 import 'katex/dist/contrib/copy-tex'
 import 'katex/dist/contrib/mhchem'
+import 'remark-github-blockquote-alert/alert.css'
 
 import ImageViewer from '@renderer/components/ImageViewer'
 import MarkdownShadowDOMRenderer from '@renderer/components/MarkdownShadowDOMRenderer'
@@ -22,11 +23,13 @@ import rehypeMathjax from 'rehype-mathjax'
 import rehypeRaw from 'rehype-raw'
 import remarkCjkFriendly from 'remark-cjk-friendly'
 import remarkGfm from 'remark-gfm'
+import remarkAlert from 'remark-github-blockquote-alert'
 import remarkMath from 'remark-math'
 import { Pluggable } from 'unified'
 
 import CodeBlock from './CodeBlock'
 import Link from './Link'
+import rehypeHeadingIds from './plugins/rehypeHeadingIds'
 import remarkDisableConstructs from './plugins/remarkDisableConstructs'
 import Table from './Table'
 
@@ -43,7 +46,7 @@ interface Props {
 
 const Markdown: FC<Props> = ({ block, postProcess }) => {
   const { t } = useTranslation()
-  const { mathEngine } = useSettings()
+  const { mathEngine, mathEnableSingleDollar } = useSettings()
 
   const isTrulyDone = 'status' in block && block.status === 'success'
   const [displayedContent, setDisplayedContent] = useState(postProcess ? postProcess(block.content) : block.content)
@@ -90,14 +93,15 @@ const Markdown: FC<Props> = ({ block, postProcess }) => {
   const remarkPlugins = useMemo(() => {
     const plugins = [
       [remarkGfm, { singleTilde: false }] as Pluggable,
+      [remarkAlert] as Pluggable,
       remarkCjkFriendly,
       remarkDisableConstructs(['codeIndented'])
     ]
     if (mathEngine !== 'none') {
-      plugins.push(remarkMath)
+      plugins.push([remarkMath, { singleDollarTextMath: mathEnableSingleDollar }])
     }
     return plugins
-  }, [mathEngine])
+  }, [mathEngine, mathEnableSingleDollar])
 
   const messageContent = useMemo(() => {
     if ('status' in block && block.status === 'paused' && isEmpty(block.content)) {
@@ -107,17 +111,18 @@ const Markdown: FC<Props> = ({ block, postProcess }) => {
   }, [block, displayedContent, t])
 
   const rehypePlugins = useMemo(() => {
-    const plugins: any[] = []
+    const plugins: Pluggable[] = []
     if (ALLOWED_ELEMENTS.test(messageContent)) {
       plugins.push(rehypeRaw)
     }
+    plugins.push([rehypeHeadingIds, { prefix: `heading-${block.id}` }])
     if (mathEngine === 'KaTeX') {
-      plugins.push(rehypeKatex as any)
+      plugins.push(rehypeKatex)
     } else if (mathEngine === 'MathJax') {
-      plugins.push(rehypeMathjax as any)
+      plugins.push(rehypeMathjax)
     }
     return plugins
-  }, [mathEngine, messageContent])
+  }, [mathEngine, messageContent, block.id])
 
   const onSaveCodeBlock = useCallback(
     (id: string, newContent: string) => {

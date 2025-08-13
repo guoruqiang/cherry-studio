@@ -35,6 +35,7 @@ const AboutSettings: FC = () => {
       }
 
       if (update.downloaded) {
+        await handleSaveData()
         window.api.showUpdateDialog()
         return
       }
@@ -202,7 +203,7 @@ const AboutSettings: FC = () => {
           </>
         )}
       </SettingGroup>
-      {hasNewVersion && update.info && (
+      {update.info && update.available && (
         <SettingGroup theme={theme}>
           <SettingRow>
             <SettingRowTitle>

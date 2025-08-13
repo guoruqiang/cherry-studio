@@ -35,7 +35,7 @@ import { setSearching } from '@renderer/store/runtime'
 import { sendMessage as _sendMessage } from '@renderer/store/thunk/messageThunk'
 import { Assistant, FileType, FileTypes, KnowledgeBase, KnowledgeItem, Model, Topic } from '@renderer/types'
 import type { MessageInputBaseParams } from '@renderer/types/newMessage'
-import { classNames, delay, formatFileSize, getFileExtension } from '@renderer/utils'
+import { classNames, delay, formatFileSize } from '@renderer/utils'
 import { formatQuotedText } from '@renderer/utils/formats'
 import {
   getFilesFromDropEvent,
@@ -188,6 +188,10 @@ const Inputbar: FC<Props> = ({ assistant: _assistant, setActiveTopic, topic }) =
 
   _text = text
   _files = files
+
+  const focusTextarea = useCallback(() => {
+    textareaRef.current?.focus()
+  }, [])
 
   const resizeTextArea = useCallback(
     (force: boolean = false) => {
@@ -470,9 +474,9 @@ const Inputbar: FC<Props> = ({ assistant: _assistant, setActiveTopic, topic }) =
         setTimeout(() => resizeTextArea(), 0)
         return newText
       })
-      textareaRef.current?.focus()
+      focusTextarea()
     },
-    [resizeTextArea]
+    [resizeTextArea, focusTextarea]
   )
 
   const onPause = async () => {
@@ -485,6 +489,7 @@ const Inputbar: FC<Props> = ({ assistant: _assistant, setActiveTopic, topic }) =
       await delay(1)
     }
     EventEmitter.emit(EVENT_NAMES.CLEAR_MESSAGES, topic)
+    focusTextarea()
   }
 
   const onNewContext = () => {
@@ -585,7 +590,7 @@ const Inputbar: FC<Props> = ({ assistant: _assistant, setActiveTopic, topic }) =
         let supportedFiles = 0
 
         files.forEach((file) => {
-          if (supportedExts.includes(getFileExtension(file.path))) {
+          if (supportedExts.includes(file.ext)) {
             setFiles((prevFiles) => [...prevFiles, file])
             supportedFiles++
           }
@@ -670,7 +675,7 @@ const Inputbar: FC<Props> = ({ assistant: _assistant, setActiveTopic, topic }) =
   useShortcut('new_topic', () => {
     addNewTopic()
     EventEmitter.emit(EVENT_NAMES.SHOW_TOPIC_SIDEBAR)
-    textareaRef.current?.focus()
+    focusTextarea()
   })
 
   useShortcut('clear_topic', clearTopic)
@@ -704,9 +709,17 @@ const Inputbar: FC<Props> = ({ assistant: _assistant, setActiveTopic, topic }) =
 
   useEffect(() => {
     if (!document.querySelector('.topview-fullscreen-container')) {
-      textareaRef.current?.focus()
+      focusTextarea()
     }
-  }, [assistant, topic])
+  }, [
+    topic.id,
+    assistant.mcpServers,
+    assistant.knowledge_bases,
+    assistant.enableWebSearch,
+    assistant.webSearchProviderId,
+    mentionedModels,
+    focusTextarea
+  ])
 
   useEffect(() => {
     const timerId = requestAnimationFrame(() => resizeTextArea())
@@ -731,12 +744,12 @@ const Inputbar: FC<Props> = ({ assistant: _assistant, setActiveTopic, topic }) =
       const lastFocusedComponent = PasteService.getLastFocusedComponent()
 
       if (!lastFocusedComponent || lastFocusedComponent === 'inputbar') {
-        textareaRef.current?.focus()
+        focusTextarea()
       }
     }
     window.addEventListener('focus', onFocus)
     return () => window.removeEventListener('focus', onFocus)
-  }, [])
+  }, [focusTextarea])
 
   useEffect(() => {
     // if assistant knowledge bases are undefined return []
@@ -816,7 +829,7 @@ const Inputbar: FC<Props> = ({ assistant: _assistant, setActiveTopic, topic }) =
       })
     }
 
-    textareaRef.current?.focus()
+    focusTextarea()
   }
 
   const isExpended = expended || !!textareaHeight
@@ -927,8 +940,8 @@ const Inputbar: FC<Props> = ({ assistant: _assistant, setActiveTopic, topic }) =
               <TranslateButton text={text} onTranslated={onTranslated} isLoading={isTranslating} />
               {loading && (
                 <Tooltip placement="top" title={t('chat.input.pause')} mouseLeaveDelay={0} arrow>
-                  <ToolbarButton type="text" onClick={onPause} style={{ marginRight: -2, marginTop: 1 }}>
-                    <CirclePause style={{ color: 'var(--color-error)', fontSize: 20 }} />
+                  <ToolbarButton type="text" onClick={onPause} style={{ marginRight: -2 }}>
+                    <CirclePause size={20} color="var(--color-error)" />
                   </ToolbarButton>
                 </Tooltip>
               )}

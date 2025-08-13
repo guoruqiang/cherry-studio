@@ -1,5 +1,6 @@
 import { CloseCircleFilled, QuestionCircleOutlined } from '@ant-design/icons'
 import EmojiPicker from '@renderer/components/EmojiPicker'
+import { ResetIcon } from '@renderer/components/Icons'
 import { HStack } from '@renderer/components/Layout'
 import { TopView } from '@renderer/components/TopView'
 import { DEFAULT_CONTEXTCOUNT, DEFAULT_MAX_TOKENS, DEFAULT_TEMPERATURE } from '@renderer/config/constant'
@@ -109,7 +110,7 @@ const AssistantSettings: FC = () => {
       theme={theme}>
       <SettingSubtitle style={{ marginTop: 0 }}>{t('common.name')}</SettingSubtitle>
       <HStack gap={8} alignItems="center">
-        <Popover content={<EmojiPicker onEmojiClick={handleEmojiSelect} />} arrow>
+        <Popover content={<EmojiPicker onEmojiClick={handleEmojiSelect} />} arrow trigger="click">
           <EmojiButtonWrapper>
             <Button style={{ fontSize: 20, padding: '4px', minWidth: '30px', height: '30px' }}>{emoji}</Button>
             {emoji && (
@@ -155,9 +156,9 @@ const AssistantSettings: FC = () => {
           marginTop: 0
         }}>
         {t('settings.assistant.model_params')}
-        <Button onClick={onReset} style={{ width: 81 }}>
-          {t('chat.settings.reset')}
-        </Button>
+        <Tooltip title={t('common.reset')} mouseLeaveDelay={0}>
+          <Button type="text" onClick={onReset} icon={<ResetIcon size={16} />} />
+        </Tooltip>
       </SettingSubtitle>
       <SettingRow>
         <HStack alignItems="center">

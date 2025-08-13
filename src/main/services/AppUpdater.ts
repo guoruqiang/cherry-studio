@@ -1,5 +1,6 @@
 import { loggerService } from '@logger'
 import { isWin } from '@main/constant'
+import { getIpCountry } from '@main/utils/ipService'
 import { locales } from '@main/utils/locales'
 import { generateUserAgent } from '@main/utils/systemInfo'
 import { FeedUrl, UpgradeChannel } from '@shared/config/constant'
@@ -11,6 +12,7 @@ import path from 'path'
 
 import icon from '../../../build/icon.png?asset'
 import { configManager } from './ConfigManager'
+import { windowService } from './WindowService'
 
 const logger = loggerService.withContext('AppUpdater')
 
@@ -20,7 +22,7 @@ export default class AppUpdater {
   private cancellationToken: CancellationToken = new CancellationToken()
   private updateCheckResult: UpdateCheckResult | null = null
 
-  constructor(mainWindow: BrowserWindow) {
+  constructor() {
     autoUpdater.logger = logger as Logger
     autoUpdater.forceDevUpdateConfig = !app.isPackaged
     autoUpdater.autoDownload = configManager.getAutoUpdate()
@@ -31,18 +33,13 @@ export default class AppUpdater {
     }
 
     autoUpdater.on('error', (error) => {
-      // 简单记录错误信息和时间戳
-      logger.error('更新异常', {
-        message: error.message,
-        stack: error.stack,
-        time: new Date().toISOString()
-      })
-      mainWindow.webContents.send(IpcChannel.UpdateError, error)
+      logger.error('update error', error as Error)
+      windowService.getMainWindow()?.webContents.send(IpcChannel.UpdateError, error)
     })
 
     autoUpdater.on('update-available', (releaseInfo: UpdateInfo) => {
-      logger.info('检测到新版本', releaseInfo)
-      mainWindow.webContents.send(IpcChannel.UpdateAvailable, releaseInfo)
+      logger.info('update available', releaseInfo)
+      windowService.getMainWindow()?.webContents.send(IpcChannel.UpdateAvailable, releaseInfo)
     })
 
     // 检测到不需要更新时
@@ -53,19 +50,19 @@ export default class AppUpdater {
         return
       }
 
-      mainWindow.webContents.send(IpcChannel.UpdateNotAvailable)
+      windowService.getMainWindow()?.webContents.send(IpcChannel.UpdateNotAvailable)
     })
 
     // 更新下载进度
     autoUpdater.on('download-progress', (progress) => {
-      mainWindow.webContents.send(IpcChannel.DownloadProgress, progress)
+      windowService.getMainWindow()?.webContents.send(IpcChannel.DownloadProgress, progress)
     })
 
     // 当需要更新的内容下载完成后
     autoUpdater.on('update-downloaded', (releaseInfo: UpdateInfo) => {
-      mainWindow.webContents.send(IpcChannel.UpdateDownloaded, releaseInfo)
+      windowService.getMainWindow()?.webContents.send(IpcChannel.UpdateDownloaded, releaseInfo)
       this.releaseInfo = releaseInfo
-      logger.info('下载完成', releaseInfo)
+      logger.info('update downloaded', releaseInfo)
     })
 
     if (isWin) {
@@ -100,30 +97,6 @@ export default class AppUpdater {
     } catch (error) {
       logger.error('Failed to get latest not draft version from github:', error as Error)
       return null
-    }
-  }
-
-  private async _getIpCountry() {
-    try {
-      // add timeout using AbortController
-      const controller = new AbortController()
-      const timeoutId = setTimeout(() => controller.abort(), 5000)
-
-      const ipinfo = await fetch('https://ipinfo.io/json', {
-        signal: controller.signal,
-        headers: {
-          'User-Agent':
-            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
-          'Accept-Language': 'en-US,en;q=0.9'
-        }
-      })
-
-      clearTimeout(timeoutId)
-      const data = await ipinfo.json()
-      return data.country || 'CN'
-    } catch (error) {
-      logger.error('Failed to get ipinfo:', error as Error)
-      return 'CN'
     }
   }
 
@@ -191,7 +164,7 @@ export default class AppUpdater {
     }
 
     this._setChannel(UpgradeChannel.LATEST, FeedUrl.PRODUCTION)
-    const ipCountry = await this._getIpCountry()
+    const ipCountry = await getIpCountry()
     logger.info(`ipCountry is ${ipCountry}, set channel to ${UpgradeChannel.LATEST}`)
     if (ipCountry.toLowerCase() !== 'cn') {
       this._setChannel(UpgradeChannel.LATEST, FeedUrl.GITHUB_LATEST)
@@ -242,7 +215,7 @@ export default class AppUpdater {
 
       return {
         currentVersion: this.autoUpdater.currentVersion,
-        updateInfo: this.updateCheckResult?.updateInfo
+        updateInfo: this.updateCheckResult?.isUpdateAvailable ? this.updateCheckResult?.updateInfo : null
       }
     } catch (error) {
       logger.error('Failed to check for update:', error as Error)

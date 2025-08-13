@@ -34,6 +34,7 @@ export enum IpcChannel {
   App_InstallUvBinary = 'app:install-uv-binary',
   App_InstallBunBinary = 'app:install-bun-binary',
   App_LogToMain = 'app:log-to-main',
+  App_SaveData = 'app:save-data',
 
   App_MacIsProcessTrusted = 'app:mac-is-process-trusted',
   App_MacRequestProcessTrust = 'app:mac-request-process-trust',
@@ -118,6 +119,8 @@ export enum IpcChannel {
 
   Windows_ResetMinimumSize = 'window:reset-minimum-size',
   Windows_SetMinimumSize = 'window:set-minimum-size',
+  Windows_Resize = 'window:resize',
+  Windows_GetSize = 'window:get-size',
 
   KnowledgeBase_Create = 'knowledge-base:create',
   KnowledgeBase_Reset = 'knowledge-base:reset',
@@ -273,5 +276,8 @@ export enum IpcChannel {
   TRACE_SET_TITLE = 'trace:setTitle',
   TRACE_ADD_END_MESSAGE = 'trace:addEndMessage',
   TRACE_CLEAN_LOCAL_DATA = 'trace:cleanLocalData',
-  TRACE_ADD_STREAM_MESSAGE = 'trace:addStreamMessage'
+  TRACE_ADD_STREAM_MESSAGE = 'trace:addStreamMessage',
+
+  // CodeTools
+  CodeTools_Run = 'code-tools:run'
 }

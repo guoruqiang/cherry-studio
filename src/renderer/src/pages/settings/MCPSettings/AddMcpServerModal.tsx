@@ -274,7 +274,7 @@ const AddMcpServerModal: FC<AddMcpServerModalProps> = ({
         onClose()
       }}
       confirmLoading={loading}
-      destroyOnClose
+      destroyOnHidden
       centered
       transitionName="animation-move-down"
       width={600}>
@@ -291,10 +291,10 @@ const AddMcpServerModal: FC<AddMcpServerModalProps> = ({
               language="json"
               onChange={handleEditorChange}
               maxHeight="300px"
+              expanded
+              unwrapped={false}
               options={{
                 lint: true,
-                collapsible: true,
-                wrappable: true,
                 lineNumbers: true,
                 foldGutter: true,
                 highlightActiveLine: true,

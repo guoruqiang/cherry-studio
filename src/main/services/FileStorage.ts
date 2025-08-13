@@ -16,7 +16,7 @@ import { writeFileSync } from 'fs'
 import { readFile } from 'fs/promises'
 import officeParser from 'officeparser'
 import * as path from 'path'
-import pdfjs from 'pdfjs-dist'
+import { PDFDocument } from 'pdf-lib'
 import { chdir } from 'process'
 import { v4 as uuidv4 } from 'uuid'
 import WordExtractor from 'word-extractor'
@@ -156,7 +156,8 @@ class FileStorage {
   }
 
   public uploadFile = async (_: Electron.IpcMainInvokeEvent, file: FileMetadata): Promise<FileMetadata> => {
-    const duplicateFile = await this.findDuplicateFile(file.path)
+    const filePath = file.path
+    const duplicateFile = await this.findDuplicateFile(filePath)
 
     if (duplicateFile) {
       return duplicateFile
@@ -167,13 +168,13 @@ class FileStorage {
     const ext = path.extname(origin_name).toLowerCase()
     const destPath = path.join(this.storageDir, uuid + ext)
 
-    logger.info(`[FileStorage] Uploading file: ${file.path}`)
+    logger.info(`[FileStorage] Uploading file: ${filePath}`)
 
     // 根据文件类型选择处理方式
     if (imageExts.includes(ext)) {
-      await this.compressImage(file.path, destPath)
+      await this.compressImage(filePath, destPath)
     } else {
-      await fs.promises.copyFile(file.path, destPath)
+      await fs.promises.copyFile(filePath, destPath)
     }
 
     const stats = await fs.promises.stat(destPath)
@@ -367,10 +368,8 @@ class FileStorage {
     const filePath = path.join(this.storageDir, id)
     const buffer = await fs.promises.readFile(filePath)
 
-    const doc = await pdfjs.getDocument({ data: buffer }).promise
-    const pages = doc.numPages
-    await doc.destroy()
-    return pages
+    const pdfDoc = await PDFDocument.load(buffer)
+    return pdfDoc.getPageCount()
   }
 
   public binaryImage = async (_: Electron.IpcMainInvokeEvent, id: string): Promise<{ data: Buffer; mime: string }> => {
@@ -626,6 +625,10 @@ class FileStorage {
       throw error
     }
   }
+
+  public getFilePathById(file: FileMetadata): string {
+    return path.join(this.storageDir, file.id + file.ext)
+  }
 }
 
-export default FileStorage
+export const fileStorage = new FileStorage()

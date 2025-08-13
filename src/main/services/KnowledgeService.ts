@@ -25,9 +25,9 @@ import { loggerService } from '@logger'
 import Embeddings from '@main/knowledge/embeddings/Embeddings'
 import { addFileLoader } from '@main/knowledge/loader'
 import { NoteLoader } from '@main/knowledge/loader/noteLoader'
-import OcrProvider from '@main/knowledge/ocr/OcrProvider'
 import PreprocessProvider from '@main/knowledge/preprocess/PreprocessProvider'
 import Reranker from '@main/knowledge/reranker/Reranker'
+import { fileStorage } from '@main/services/FileStorage'
 import { windowService } from '@main/services/WindowService'
 import { getDataPath } from '@main/utils'
 import { getAllFiles } from '@main/utils/file'
@@ -687,23 +687,19 @@ class KnowledgeService {
     userId: string
   ): Promise<FileMetadata> => {
     let fileToProcess: FileMetadata = file
-    if (base.preprocessOrOcrProvider && file.ext.toLowerCase() === '.pdf') {
+    if (base.preprocessProvider && file.ext.toLowerCase() === '.pdf') {
       try {
-        let provider: PreprocessProvider | OcrProvider
-        if (base.preprocessOrOcrProvider.type === 'preprocess') {
-          provider = new PreprocessProvider(base.preprocessOrOcrProvider.provider, userId)
-        } else {
-          provider = new OcrProvider(base.preprocessOrOcrProvider.provider)
-        }
+        const provider = new PreprocessProvider(base.preprocessProvider.provider, userId)
+        const filePath = fileStorage.getFilePathById(file)
         // Check if file has already been preprocessed
         const alreadyProcessed = await provider.checkIfAlreadyProcessed(file)
         if (alreadyProcessed) {
-          logger.debug(`File already preprocess processed, using cached result: ${file.path}`)
+          logger.debug(`File already preprocess processed, using cached result: ${filePath}`)
           return alreadyProcessed
         }
 
         // Execute preprocessing
-        logger.debug(`Starting preprocess processing for scanned PDF: ${file.path}`)
+        logger.debug(`Starting preprocess processing for scanned PDF: ${filePath}`)
         const { processedFile, quota } = await provider.parseFile(item.id, file)
         fileToProcess = processedFile
         const mainWindow = windowService.getMainWindow()
@@ -728,8 +724,8 @@ class KnowledgeService {
     userId: string
   ): Promise<number> => {
     try {
-      if (base.preprocessOrOcrProvider && base.preprocessOrOcrProvider.type === 'preprocess') {
-        const provider = new PreprocessProvider(base.preprocessOrOcrProvider.provider, userId)
+      if (base.preprocessProvider && base.preprocessProvider.type === 'preprocess') {
+        const provider = new PreprocessProvider(base.preprocessProvider.provider, userId)
         return await provider.checkQuota()
       }
       throw new Error('No preprocess provider configured')
