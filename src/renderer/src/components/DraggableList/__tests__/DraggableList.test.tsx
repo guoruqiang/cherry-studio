@@ -29,20 +29,6 @@ vi.mock('@hello-pangea/dnd', () => {
   }
 })
 
-// mock VirtualList 只做简单渲染
-vi.mock('rc-virtual-list', () => ({
-  __esModule: true,
-  default: ({ data, itemKey, children }: any) => (
-    <div data-testid="virtual-list">
-      {data.map((item: any, idx: number) => (
-        <div key={item[itemKey] || item} data-testid="virtual-list-item">
-          {children(item, idx)}
-        </div>
-      ))}
-    </div>
-  )
-}))
-
 declare global {
   interface Window {
     triggerOnDragEnd: (result?: any, provided?: any) => void
@@ -73,19 +59,21 @@ describe('DraggableList', () => {
       const list = [{ id: 'a', name: 'A' }]
       const style = { background: 'red' }
       const listStyle = { color: 'blue' }
-      render(
+      const { container } = render(
         <DraggableList list={list} style={style} listStyle={listStyle} onUpdate={() => {}}>
           {(item) => <div data-testid="item">{item.name}</div>}
         </DraggableList>
       )
       // 检查 style 是否传递到外层容器
-      const virtualList = screen.getByTestId('virtual-list')
-      expect(virtualList.parentElement).toHaveStyle({ background: 'red' })
+      const listContainer = container.querySelector('.draggable-list-container')
+      expect(listContainer).not.toBeNull()
+      expect(listContainer?.parentElement).toHaveStyle({ background: 'red' })
     })
 
     it('should render nothing when list is empty', () => {
+      const emptyList: Array<{ id: string; name: string }> = []
       render(
-        <DraggableList list={[]} onUpdate={() => {}}>
+        <DraggableList list={emptyList} onUpdate={() => {}}>
           {(item) => <div data-testid="item">{item.name}</div>}
         </DraggableList>
       )
@@ -157,8 +145,7 @@ describe('DraggableList', () => {
 
       // 模拟拖拽到自身
       window.triggerOnDragEnd({ source: { index: 1 }, destination: { index: 1 } }, {})
-      expect(onUpdate).toHaveBeenCalledTimes(1)
-      expect(onUpdate.mock.calls[0][0]).toEqual(list)
+      expect(onUpdate).toHaveBeenCalledTimes(0)
     })
   })
 
@@ -175,8 +162,7 @@ describe('DraggableList', () => {
 
       // 拖拽自身
       window.triggerOnDragEnd({ source: { index: 0 }, destination: { index: 0 } }, {})
-      expect(onUpdate).toHaveBeenCalledTimes(1)
-      expect(onUpdate.mock.calls[0][0]).toEqual(list)
+      expect(onUpdate).toHaveBeenCalledTimes(0)
     })
 
     it('should not crash if callbacks are undefined', () => {

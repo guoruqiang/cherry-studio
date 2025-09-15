@@ -1,5 +1,6 @@
 import { loggerService } from '@logger'
 import { fetchChatCompletion } from '@renderer/services/ApiService'
+import { ConversationService } from '@renderer/services/ConversationService'
 import { getAssistantMessage, getUserMessage } from '@renderer/services/MessagesService'
 import store from '@renderer/store'
 import { updateOneBlock, upsertManyBlocks, upsertOneBlock } from '@renderer/store/messageBlock'
@@ -10,6 +11,7 @@ import { Chunk, ChunkType } from '@renderer/types/chunk'
 import { AssistantMessageStatus, MessageBlockStatus } from '@renderer/types/newMessage'
 import { formatErrorMessage, isAbortError } from '@renderer/utils/error'
 import { createErrorBlock, createMainTextBlock, createThinkingBlock } from '@renderer/utils/messageUtils/create'
+import { cloneDeep } from 'lodash'
 
 const logger = loggerService.withContext('ActionUtils')
 
@@ -53,9 +55,22 @@ export const processMessages = async (
 
     let finished = false
 
+    const newAssistant = cloneDeep(assistant)
+    if (!newAssistant.settings) {
+      newAssistant.settings = {}
+    }
+    newAssistant.settings.streamOutput = true
+    // 显式关闭这些功能
+    newAssistant.webSearchProviderId = undefined
+    newAssistant.mcpServers = undefined
+    newAssistant.knowledge_bases = undefined
+    const { modelMessages, uiMessages } = await ConversationService.prepareMessagesForModel([userMessage], newAssistant)
+
     await fetchChatCompletion({
-      messages: [userMessage],
-      assistant: { ...assistant, settings: { streamOutput: true } },
+      messages: modelMessages,
+      assistant: newAssistant,
+      options: {},
+      uiMessages: uiMessages,
       onChunkReceived: (chunk: Chunk) => {
         if (finished) {
           return

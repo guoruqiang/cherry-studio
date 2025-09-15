@@ -57,10 +57,6 @@ export const waitAsyncFunction = (
 
 export const uuid = () => uuidv4()
 
-export function isFreeModel(model: Model) {
-  return (model.id + model.name).toLocaleLowerCase().includes('free')
-}
-
 /**
  * 从错误对象中提取错误信息。
  * @param {any} error 错误对象或字符串
@@ -226,6 +222,7 @@ export function uniqueObjectArray<T>(array: T[]): T[] {
 
 export * from './api'
 export * from './collection'
+export * from './dataLimit'
 export * from './file'
 export * from './image'
 export * from './json'

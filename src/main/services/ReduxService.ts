@@ -35,10 +35,12 @@ export class ReduxService extends EventEmitter {
     })
   }
 
-  private async waitForStoreReady(webContents: Electron.WebContents, timeout = 10000): Promise<void> {
+  private async waitForStoreReady(webContents: Electron.WebContents, timeout = 30000): Promise<void> {
     if (this.isReady) return
 
     const startTime = Date.now()
+    let lastError: any = null
+    
     while (Date.now() - startTime < timeout) {
       try {
         const isReady = await webContents.executeJavaScript(`
@@ -49,11 +51,18 @@ export class ReduxService extends EventEmitter {
           return
         }
       } catch (error) {
-        // 忽略错误，继续等待
+        lastError = error
+        // 记录错误但不立即失败，继续等待
+        console.log('Redux store check error:', error)
       }
-      await new Promise((resolve) => setTimeout(resolve, 100))
+      await new Promise((resolve) => setTimeout(resolve, 200))
     }
-    throw new Error('Timeout waiting for Redux store to be ready')
+    
+    const errorMessage = `Timeout waiting for Redux store to be ready after ${timeout}ms`
+    if (lastError) {
+      console.error('Last error during Redux store wait:', lastError)
+    }
+    throw new Error(errorMessage)
   }
 
   // 添加同步获取状态的方法

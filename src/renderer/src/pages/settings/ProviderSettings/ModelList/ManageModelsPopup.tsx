@@ -18,7 +18,8 @@ import NewApiAddModelPopup from '@renderer/pages/settings/ProviderSettings/Model
 import NewApiBatchAddModelPopup from '@renderer/pages/settings/ProviderSettings/ModelList/NewApiBatchAddModelPopup'
 import { fetchModels } from '@renderer/services/ApiService'
 import { Model, Provider } from '@renderer/types'
-import { filterModelsByKeywords, getDefaultGroupName, getFancyProviderName, isFreeModel } from '@renderer/utils'
+import { filterModelsByKeywords, getDefaultGroupName, getFancyProviderName } from '@renderer/utils'
+import { isFreeModel } from '@renderer/utils/model'
 import { Button, Empty, Flex, Modal, Spin, Tabs, Tooltip } from 'antd'
 import Input from 'antd/es/input/Input'
 import { groupBy, isEmpty, uniqBy } from 'lodash'
@@ -336,7 +337,14 @@ const PopupContainer: React.FC<Props> = ({ providerId, resolve }) => {
             <Empty
               image={Empty.PRESENTED_IMAGE_SIMPLE}
               description={t('settings.models.empty')}
-              style={{ visibility: loadingModels ? 'hidden' : 'visible' }}
+              style={{
+                visibility: loadingModels ? 'hidden' : 'visible',
+                display: 'flex',
+                justifyContent: 'center',
+                alignItems: 'center',
+                height: '100%',
+                margin: '0'
+              }}
             />
           ) : (
             <ManageModelsList

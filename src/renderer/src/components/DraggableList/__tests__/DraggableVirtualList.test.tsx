@@ -1,5 +1,3 @@
-/// <reference types="@vitest/browser/context" />
-
 import { render, screen } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 
@@ -34,7 +32,7 @@ vi.mock('@hello-pangea/dnd', () => ({
 }))
 
 vi.mock('@tanstack/react-virtual', () => ({
-  useVirtualizer: ({ count }) => ({
+  useVirtualizer: ({ count, getScrollElement }) => ({
     getVirtualItems: () =>
       Array.from({ length: count }, (_, index) => ({
         index,
@@ -43,13 +41,14 @@ vi.mock('@tanstack/react-virtual', () => ({
         size: 50
       })),
     getTotalSize: () => count * 50,
-    measureElement: vi.fn()
+    measureElement: vi.fn(),
+    scrollToIndex: vi.fn(),
+    scrollToOffset: vi.fn(),
+    scrollElement: getScrollElement(),
+    measure: vi.fn(),
+    resizeItem: vi.fn(),
+    getVirtualIndexes: () => Array.from({ length: count }, (_, i) => i)
   })
-}))
-
-vi.mock('react-virtualized-auto-sizer', () => ({
-  __esModule: true,
-  default: ({ children }) => <div data-testid="auto-sizer">{children({ height: 500, width: 300 })}</div>
 }))
 
 vi.mock('@renderer/components/Scrollbar', () => ({

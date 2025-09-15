@@ -6,6 +6,7 @@ import {
   MAX_CONTEXT_COUNT,
   UNLIMITED_CONTEXT_COUNT
 } from '@renderer/config/constant'
+import { isQwenMTModel } from '@renderer/config/models'
 import { UNKNOWN } from '@renderer/config/translate'
 import i18n from '@renderer/i18n'
 import store from '@renderer/store'
@@ -24,6 +25,19 @@ import { uuid } from '@renderer/utils'
 
 const logger = loggerService.withContext('AssistantService')
 
+export const DEFAULT_ASSISTANT_SETTINGS: AssistantSettings = {
+  temperature: DEFAULT_TEMPERATURE,
+  enableTemperature: true,
+  contextCount: DEFAULT_CONTEXTCOUNT,
+  enableMaxTokens: false,
+  maxTokens: 0,
+  streamOutput: true,
+  topP: 1,
+  enableTopP: true,
+  toolUseMode: 'prompt',
+  customParameters: []
+}
+
 export function getDefaultAssistant(): Assistant {
   return {
     id: 'default',
@@ -34,45 +48,50 @@ export function getDefaultAssistant(): Assistant {
     messages: [],
     type: 'assistant',
     regularPhrases: [], // Added regularPhrases
-    settings: {
-      temperature: DEFAULT_TEMPERATURE,
-      enableTemperature: true,
-      contextCount: DEFAULT_CONTEXTCOUNT,
-      enableMaxTokens: false,
-      maxTokens: 0,
-      streamOutput: true,
-      topP: 1,
-      enableTopP: true,
-      toolUseMode: 'prompt',
-      customParameters: []
-    }
+    settings: DEFAULT_ASSISTANT_SETTINGS
   }
 }
 
 export function getDefaultTranslateAssistant(targetLanguage: TranslateLanguage, text: string): TranslateAssistant {
-  const translateModel = getTranslateModel()
+  const model = getTranslateModel()
   const assistant: Assistant = getDefaultAssistant()
-  assistant.model = translateModel
 
-  if (!assistant.model) {
+  if (!model) {
     logger.error('No translate model')
     throw new Error(i18n.t('translate.error.not_configured'))
   }
 
   if (targetLanguage.langCode === UNKNOWN.langCode) {
-    logger.error('Unknown target language')
+    logger.error('Unknown target language', targetLanguage)
     throw new Error('Unknown target language')
   }
 
-  assistant.settings = {
+  const settings = {
     temperature: 0.7
   }
 
-  assistant.prompt = store
-    .getState()
-    .settings.translateModelPrompt.replaceAll('{{target_language}}', targetLanguage.value)
-    .replaceAll('{{text}}', text)
-  return { ...assistant, targetLanguage }
+  let prompt: string
+  let content: string
+  if (isQwenMTModel(model)) {
+    content = text
+    prompt = ''
+  } else {
+    content = 'follow system instruction'
+    prompt = store
+      .getState()
+      .settings.translateModelPrompt.replaceAll('{{target_language}}', targetLanguage.value)
+      .replaceAll('{{text}}', text)
+  }
+
+  const translateAssistant = {
+    ...assistant,
+    model,
+    settings,
+    prompt,
+    targetLanguage,
+    content
+  } satisfies TranslateAssistant
+  return translateAssistant
 }
 
 export function getDefaultAssistantSettings() {
@@ -99,8 +118,8 @@ export function getDefaultModel() {
   return store.getState().llm.defaultModel
 }
 
-export function getTopNamingModel() {
-  return store.getState().llm.topicNamingModel
+export function getQuickModel() {
+  return store.getState().llm.quickModel
 }
 
 export function getTranslateModel() {
@@ -115,8 +134,15 @@ export function getAssistantProvider(assistant: Assistant): Provider {
 
 export function getProviderByModel(model?: Model): Provider {
   const providers = store.getState().llm.providers
-  const providerId = model ? model.provider : getDefaultProvider().id
-  return providers.find((p) => p.id === providerId) as Provider
+  const provider = providers.find((p) => p.id === model?.provider)
+
+  if (!provider) {
+    const defaultProvider = providers.find((p) => p.id === getDefaultModel()?.provider)
+    const cherryinProvider = providers.find((p) => p.id === 'cherryin')
+    return defaultProvider || cherryinProvider || providers[0]
+  }
+
+  return provider
 }
 
 export function getProviderByModelId(modelId?: string) {
@@ -149,6 +175,7 @@ export const getAssistantSettings = (assistant: Assistant): AssistantSettings =>
     streamOutput: assistant?.settings?.streamOutput ?? true,
     toolUseMode: assistant?.settings?.toolUseMode ?? 'prompt',
     defaultModel: assistant?.defaultModel ?? undefined,
+    reasoning_effort: assistant?.settings?.reasoning_effort ?? undefined,
     customParameters: assistant?.settings?.customParameters ?? []
   }
 }
@@ -171,26 +198,12 @@ export async function createAssistantFromAgent(agent: Agent) {
     model: agent.defaultModel,
     type: 'assistant',
     regularPhrases: agent.regularPhrases || [], // Ensured regularPhrases
-    settings: agent.settings || {
-      temperature: DEFAULT_TEMPERATURE,
-      enableTemperature: true,
-      contextCount: DEFAULT_CONTEXTCOUNT,
-      enableMaxTokens: false,
-      maxTokens: 0,
-      streamOutput: true,
-      topP: 1,
-      enableTopP: true,
-      toolUseMode: 'prompt',
-      customParameters: []
-    }
+    settings: agent.settings || DEFAULT_ASSISTANT_SETTINGS
   }
 
   store.dispatch(addAssistant(assistant))
 
-  window.message.success({
-    content: i18n.t('message.assistant.added.content'),
-    key: 'assistant-added'
-  })
+  window.toast.success(i18n.t('message.assistant.added.content'))
 
   return assistant
 }

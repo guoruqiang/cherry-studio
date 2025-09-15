@@ -23,31 +23,19 @@ const AboutSettings: FC = () => {
   const [version, setVersion] = useState('')
   const [isPortable, setIsPortable] = useState(false)
   const { t } = useTranslation()
-  const { autoCheckUpdate, setAutoCheckUpdate, testPlan, testChannel, setTestChannel } = useSettings()
+  const { testPlan, testChannel, setTestChannel } = useSettings()
   const { theme } = useTheme()
   const dispatch = useAppDispatch()
   const { update } = useRuntime()
 
   const onCheckUpdate = debounce(
     async () => {
-      if (update.checking || update.downloading) {
-        return
-      }
-
-      if (update.downloaded) {
-        window.api.showUpdateDialog()
-        return
-      }
-
-      dispatch(setUpdateState({ checking: true }))
-
-      try {
-        await window.api.checkForUpdate()
-      } catch (error) {
-        window.message.error(t('settings.about.updateError'))
-      }
-
-      dispatch(setUpdateState({ checking: false }))
+      // 显示自定义提示信息
+      window.modal.info({
+        title: '版本更新提示！',
+        content: '当前版本为适配西农er\'s GPT的Cherry Studio修改版，请手动更新。',
+        icon: null
+      })
     },
     2000,
     { leading: true, trailing: false }
@@ -65,7 +53,7 @@ const AboutSettings: FC = () => {
 
   const handleTestChannelChange = async (value: UpgradeChannel) => {
     if (testPlan && currentChannelByVersion !== UpgradeChannel.LATEST && value !== currentChannelByVersion) {
-      window.message.warning(t('settings.general.test_plan.version_channel_not_match'))
+      window.toast.warning(t('settings.general.test_plan.version_channel_not_match'))
     }
     setTestChannel(value)
     // Clear update info when switching upgrade channel
@@ -168,7 +156,7 @@ const AboutSettings: FC = () => {
             <SettingDivider />
             <SettingRow>
               <SettingRowTitle>{t('settings.general.auto_check_update.title')}</SettingRowTitle>
-              <Switch value={autoCheckUpdate} onChange={(v) => setAutoCheckUpdate(v)} />
+              <Switch value={false} disabled={true} />
             </SettingRow>
             <SettingDivider />
             {/* <SettingRow>

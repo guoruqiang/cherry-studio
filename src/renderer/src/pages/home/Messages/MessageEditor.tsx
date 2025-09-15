@@ -4,6 +4,7 @@ import TranslateButton from '@renderer/components/TranslateButton'
 import { isGenerateImageModel, isVisionModel } from '@renderer/config/models'
 import { useAssistant } from '@renderer/hooks/useAssistant'
 import { useSettings } from '@renderer/hooks/useSettings'
+import { useTimer } from '@renderer/hooks/useTimer'
 import FileManager from '@renderer/services/FileManager'
 import PasteService from '@renderer/services/PasteService'
 import { useAppSelector } from '@renderer/store'
@@ -51,6 +52,7 @@ const MessageBlockEditor: FC<Props> = ({ message, topicId, onSave, onResend, onC
   const isUserMessage = message.role === 'user'
 
   const topicMessages = useAppSelector((state) => selectMessagesForTopic(state, topicId))
+  const { setTimeoutTimer } = useTimer()
 
   const couldAddImageFile = useMemo(() => {
     const relatedAssistantMessages = topicMessages.filter((m) => m.askId === message.id && m.role === 'assistant')
@@ -181,10 +183,7 @@ const MessageBlockEditor: FC<Props> = ({ message, topicId, onSave, onResend, onC
 
       // 如果有文件，但都不支持
       if (files.length > 0 && supportedFiles === 0) {
-        window.message.info({
-          key: 'file_not_supported',
-          content: t('chat.input.file_not_supported')
-        })
+        window.toast.info(t('chat.input.file_not_supported'))
       }
     }
   }
@@ -226,6 +225,12 @@ const MessageBlockEditor: FC<Props> = ({ message, topicId, onSave, onResend, onC
       return
     }
 
+    if (event.key === 'Escape') {
+      event.preventDefault()
+      onCancel()
+      return
+    }
+
     // keep the same enter behavior as inputbar
     const isEnterPressed = event.key === 'Enter' && !event.nativeEvent.isComposing
     if (isEnterPressed) {
@@ -247,9 +252,13 @@ const MessageBlockEditor: FC<Props> = ({ message, topicId, onSave, onResend, onC
             handleTextChange(blockId, newText)
 
             // set cursor position in the next render cycle
-            setTimeout(() => {
-              textArea.selectionStart = textArea.selectionEnd = start + 1
-            }, 0)
+            setTimeoutTimer(
+              'handleKeyDown',
+              () => {
+                textArea.selectionStart = textArea.selectionEnd = start + 1
+              },
+              0
+            )
           }
         }
       }

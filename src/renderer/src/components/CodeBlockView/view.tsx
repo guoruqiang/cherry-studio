@@ -18,15 +18,14 @@ import { BasicPreviewHandles } from '@renderer/components/Preview'
 import { MAX_COLLAPSED_CODE_HEIGHT } from '@renderer/config/constant'
 import { useSettings } from '@renderer/hooks/useSettings'
 import { pyodideService } from '@renderer/services/PyodideService'
-import { extractTitle } from '@renderer/utils/formats'
-import { getExtensionByLanguage, isHtmlCode } from '@renderer/utils/markdown'
+import { getExtensionByLanguage } from '@renderer/utils/code-language'
+import { extractHtmlTitle, getFileNameFromHtmlTitle } from '@renderer/utils/formats'
 import dayjs from 'dayjs'
 import React, { memo, startTransition, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import styled, { css } from 'styled-components'
 
 import { SPECIAL_VIEW_COMPONENTS, SPECIAL_VIEWS } from './constants'
-import HtmlArtifactsCard from './HtmlArtifactsCard'
 import StatusBar from './StatusBar'
 import { ViewMode } from './types'
 
@@ -101,7 +100,7 @@ export const CodeBlockView: React.FC<Props> = memo(({ children, language, onSave
   }, [hasSpecialView, viewMode])
 
   const [expandOverride, setExpandOverride] = useState(!codeCollapsible)
-  const [unwrapOverride, setUnwrapOverride] = useState(!codeWrappable)
+  const [wrapOverride, setWrapOverride] = useState(codeWrappable)
 
   // 重置用户操作
   useEffect(() => {
@@ -110,11 +109,11 @@ export const CodeBlockView: React.FC<Props> = memo(({ children, language, onSave
 
   // 重置用户操作
   useEffect(() => {
-    setUnwrapOverride(!codeWrappable)
+    setWrapOverride(codeWrappable)
   }, [codeWrappable])
 
   const shouldExpand = useMemo(() => !codeCollapsible || expandOverride, [codeCollapsible, expandOverride])
-  const shouldUnwrap = useMemo(() => !codeWrappable || unwrapOverride, [codeWrappable, unwrapOverride])
+  const shouldWrap = useMemo(() => codeWrappable && wrapOverride, [codeWrappable, wrapOverride])
 
   const [sourceScrollHeight, setSourceScrollHeight] = useState(0)
   const expandable = useMemo(() => {
@@ -129,15 +128,15 @@ export const CodeBlockView: React.FC<Props> = memo(({ children, language, onSave
 
   const handleCopySource = useCallback(() => {
     navigator.clipboard.writeText(children)
-    window.message.success({ content: t('code_block.copy.success'), key: 'copy-code' })
+    window.toast.success(t('code_block.copy.success'))
   }, [children, t])
 
   const handleDownloadSource = useCallback(() => {
     let fileName = ''
 
     // 尝试提取 HTML 标题
-    if (language === 'html' && children.includes('</html>')) {
-      fileName = extractTitle(children) || ''
+    if (language === 'html') {
+      fileName = getFileNameFromHtmlTitle(extractHtmlTitle(children)) || ''
     }
 
     // 默认使用日期格式命名
@@ -226,9 +225,9 @@ export const CodeBlockView: React.FC<Props> = memo(({ children, language, onSave
   // 源代码视图的自动换行按钮
   useWrapTool({
     enabled: !isInSpecialView,
-    unwrapped: shouldUnwrap,
+    wrapped: shouldWrap,
     wrappable: codeWrappable,
-    toggle: useCallback(() => setUnwrapOverride((prev) => !prev), []),
+    toggle: useCallback(() => setWrapOverride((prev) => !prev), []),
     setTools
   })
 
@@ -250,21 +249,23 @@ export const CodeBlockView: React.FC<Props> = memo(({ children, language, onSave
           language={language}
           onSave={onSave}
           onHeightChange={handleHeightChange}
+          maxHeight={`${MAX_COLLAPSED_CODE_HEIGHT}px`}
           options={{ stream: true }}
           expanded={shouldExpand}
-          unwrapped={shouldUnwrap}
+          wrapped={shouldWrap}
         />
       ) : (
         <CodeViewer
           className="source-view"
+          value={children}
           language={language}
+          onHeightChange={handleHeightChange}
           expanded={shouldExpand}
-          unwrapped={shouldUnwrap}
-          onHeightChange={handleHeightChange}>
-          {children}
-        </CodeViewer>
+          wrapped={shouldWrap}
+          maxHeight={`${MAX_COLLAPSED_CODE_HEIGHT}px`}
+        />
       ),
-    [children, codeEditor.enabled, handleHeightChange, language, onSave, shouldExpand, shouldUnwrap]
+    [children, codeEditor.enabled, handleHeightChange, language, onSave, shouldExpand, shouldWrap]
   )
 
   // 特殊视图组件映射
@@ -300,11 +301,6 @@ export const CodeBlockView: React.FC<Props> = memo(({ children, language, onSave
       </SplitViewWrapper>
     )
   }, [specialView, sourceView, viewMode])
-
-  // HTML 代码块特殊处理 - 在所有 hooks 调用之后
-  if (language === 'html' && isHtmlCode(children)) {
-    return <HtmlArtifactsCard html={children} />
-  }
 
   return (
     <CodeBlockWrapper className="code-block" $isInSpecialView={isInSpecialView}>
@@ -350,7 +346,7 @@ const CodeBlockWrapper = styled.div<{ $isInSpecialView: boolean }>`
   }
 `
 
-const CodeHeader = styled.div<{ $isInSpecialView: boolean }>`
+const CodeHeader = styled.div<{ $isInSpecialView?: boolean }>`
   display: flex;
   align-items: center;
   color: var(--color-text);
@@ -376,7 +372,11 @@ const SplitViewWrapper = styled.div<{ $isSpecialView: boolean; $isSplitView: boo
   &:not(:has(+ [class*='Container'])) {
     // 特殊视图的 header 会隐藏，所以全都使用圆角
     border-radius: ${(props) => (props.$isSpecialView ? '8px' : '0 0 8px 8px')};
-    overflow: hidden;
+    // FIXME: 滚动条边缘会溢出，可以考虑增加 padding，但是要保证代码主题颜色铺满容器。
+    // overflow: hidden;
+    .code-viewer {
+      border-radius: inherit;
+    }
   }
 
   // 在 split 模式下添加中间分隔线

@@ -1,9 +1,8 @@
 import App from '@renderer/components/MinApp/MinApp'
 import { useMinapps } from '@renderer/hooks/useMinapps'
 import { useRuntime } from '@renderer/hooks/useRuntime'
-
-import tabsService from '@renderer/services/TabsService'
-import { FileSearch, Folder, Languages, Sparkle, Terminal } from 'lucide-react'
+// import { useSettings } from '@renderer/hooks/useSettings'
+import { Code, FileSearch, Folder, Languages, NotepadText, Sparkle } from 'lucide-react'
 import { FC, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
@@ -42,10 +41,16 @@ const LaunchpadPage: FC = () => {
       bgColor: 'linear-gradient(135deg, #F59E0B, #FBBF24)' // 文件：金色，代表资源和重要性
     },
     {
-      icon: <Terminal size={32} className="icon" />,
+      icon: <Code size={32} className="icon" />,
       text: t('title.code'),
       path: '/code',
       bgColor: 'linear-gradient(135deg, #1F2937, #374151)' // Code CLI：高级暗黑色，代表专业和技术
+    },
+    {
+      icon: <NotepadText size={32} className="icon" />,
+      text: t('title.notes'),
+      path: '/notes',
+      bgColor: 'linear-gradient(135deg, #F97316, #FB923C)' // 笔记：橙色，代表活力和清晰思路
     }
   ]
 
@@ -87,7 +92,7 @@ const LaunchpadPage: FC = () => {
             <Grid>
               {sortedMinapps.map((app) => (
                 <AppWrapper key={app.id}>
-                  <App app={app} size={56} onClick={() => setTimeout(() => tabsService.closeTab('launchpad'), 350)} />
+                  <App app={app} size={56} />
                 </AppWrapper>
               ))}
             </Grid>

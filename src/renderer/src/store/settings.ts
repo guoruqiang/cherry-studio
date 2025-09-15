@@ -1,5 +1,7 @@
 import { createSlice, PayloadAction } from '@reduxjs/toolkit'
+import { isMac } from '@renderer/config/constant'
 import { TRANSLATE_PROMPT } from '@renderer/config/prompts'
+import { DEFAULT_SIDEBAR_ICONS } from '@renderer/config/sidebar'
 import {
   ApiServerConfig,
   AssistantsSortType,
@@ -10,6 +12,7 @@ import {
   OpenAISummaryText,
   PaintingProvider,
   S3Config,
+  SidebarIcon,
   ThemeMode,
   TranslateLanguageCode
 } from '@renderer/types'
@@ -21,17 +24,8 @@ import { RemoteSyncState } from './backup'
 
 export type SendMessageShortcut = 'Enter' | 'Shift+Enter' | 'Ctrl+Enter' | 'Command+Enter' | 'Alt+Enter'
 
-// export type SidebarIcon = 'assistants' | 'agents' | 'paintings' | 'translate' | 'minapp' | 'knowledge' | 'files'
-export type SidebarIcon = 'assistants' | 'agents' | 'translate' | 'knowledge' | 'files'
-export const DEFAULT_SIDEBAR_ICONS: SidebarIcon[] = [
-  'assistants',
-  'agents',
-  // 'paintings',
-  'translate',
-  // 'minapp',
-  'knowledge',
-  'files'
-]
+// Re-export for backward compatibility
+export { DEFAULT_SIDEBAR_ICONS }
 
 export interface NutstoreSyncRuntime extends RemoteSyncState {}
 
@@ -39,6 +33,8 @@ export type AssistantIconType = 'model' | 'emoji' | 'none'
 
 export type UserTheme = {
   colorPrimary: string
+  userFontFamily: string
+  userCodeFontFamily: string
 }
 
 export interface SettingsState {
@@ -54,7 +50,6 @@ export interface SettingsState {
   userName: string
   userId: string
   showPrompt: boolean
-  showTokens: boolean
   showMessageDivider: boolean
   messageFont: 'system' | 'serif'
   showInputEstimatedTokens: boolean
@@ -104,6 +99,7 @@ export interface SettingsState {
   codeCollapsible: boolean
   codeWrappable: boolean
   codeImageTools: boolean
+  codeFancyBlock: boolean
   mathEngine: MathEngine
   mathEnableSingleDollar: boolean
   messageStyle: 'plain' | 'bubble'
@@ -129,6 +125,9 @@ export interface SettingsState {
   enableTopicNaming: boolean
   customCss: string
   topicNamingPrompt: string
+  // 消息操作确认设置
+  confirmDeleteMessage: boolean
+  confirmRegenerateMessage: boolean
   // Sidebar icons
   sidebarIcons: {
     visible: SidebarIcon[]
@@ -176,7 +175,6 @@ export interface SettingsState {
   enableSpellCheck: boolean
   spellCheckLanguages: string[]
   enableQuickPanelTriggers: boolean
-  enableBackspaceDeleteModel: boolean
   // 硬件加速设置
   disableHardwareAcceleration: boolean
   exportMenuOptions: {
@@ -190,6 +188,7 @@ export interface SettingsState {
     siyuan: boolean
     docx: boolean
     plain_text: boolean
+    notes: boolean
   }
   // OpenAI
   openAI: {
@@ -218,7 +217,7 @@ export interface SettingsState {
   navbarPosition: 'left' | 'top'
   // API Server
   apiServer: ApiServerConfig
-  showMessageOutline?: boolean
+  showMessageOutline: boolean
 }
 
 export type MultiModelMessageStyle = 'horizontal' | 'vertical' | 'fold' | 'grid'
@@ -236,7 +235,6 @@ export const initialState: SettingsState = {
   userName: '',
   userId: uuid(),
   showPrompt: true,
-  showTokens: true,
   showMessageDivider: true,
   messageFont: 'system',
   showInputEstimatedTokens: false,
@@ -246,9 +244,11 @@ export const initialState: SettingsState = {
   tray: true,
   theme: ThemeMode.system,
   userTheme: {
-    colorPrimary: '#00b96b'
+    colorPrimary: '#00b96b',
+    userFontFamily: '',
+    userCodeFontFamily: ''
   },
-  windowStyle: 'opaque',
+  windowStyle: isMac ? 'transparent' : 'opaque',
   fontSize: 14,
   topicPosition: 'left',
   showTopicTime: false,
@@ -287,6 +287,7 @@ export const initialState: SettingsState = {
   codeCollapsible: false,
   codeWrappable: false,
   codeImageTools: false,
+  codeFancyBlock: true,
   mathEngine: 'KaTeX',
   mathEnableSingleDollar: true,
   messageStyle: 'plain',
@@ -352,7 +353,9 @@ export const initialState: SettingsState = {
   enableSpellCheck: false,
   spellCheckLanguages: [],
   enableQuickPanelTriggers: false,
-  enableBackspaceDeleteModel: true,
+  // 消息操作确认设置
+  confirmDeleteMessage: true,
+  confirmRegenerateMessage: true,
   // 硬件加速设置
   disableHardwareAcceleration: false,
   exportMenuOptions: {
@@ -365,7 +368,8 @@ export const initialState: SettingsState = {
     obsidian: true,
     siyuan: true,
     docx: true,
-    plain_text: true
+    plain_text: true,
+    notes: true
   },
   // OpenAI
   openAI: {
@@ -384,7 +388,7 @@ export const initialState: SettingsState = {
   localBackupSyncInterval: 0,
   localBackupMaxBackups: 0,
   localBackupSkipBackupFile: false,
-  defaultPaintingProvider: 'aihubmix',
+  defaultPaintingProvider: 'zhipu',
   s3: {
     endpoint: '',
     region: '',
@@ -397,6 +401,7 @@ export const initialState: SettingsState = {
     maxBackups: 0,
     skipBackupFile: false
   },
+
   // Developer mode
   enableDeveloperMode: false,
   // UI
@@ -408,7 +413,7 @@ export const initialState: SettingsState = {
     port: 23333,
     apiKey: `cs-sk-${uuid()}`
   },
-  showMessageOutline: undefined
+  showMessageOutline: false
 }
 
 const settingsSlice = createSlice({
@@ -453,9 +458,6 @@ const settingsSlice = createSlice({
     },
     setShowPrompt: (state, action: PayloadAction<boolean>) => {
       state.showPrompt = action.payload
-    },
-    setShowTokens: (state, action: PayloadAction<boolean>) => {
-      state.showTokens = action.payload
     },
     setShowMessageDivider: (state, action: PayloadAction<boolean>) => {
       state.showMessageDivider = action.payload
@@ -614,6 +616,9 @@ const settingsSlice = createSlice({
     },
     setCodeImageTools: (state, action: PayloadAction<boolean>) => {
       state.codeImageTools = action.payload
+    },
+    setCodeFancyBlock: (state, action: PayloadAction<boolean>) => {
+      state.codeFancyBlock = action.payload
     },
     setMathEngine: (state, action: PayloadAction<MathEngine>) => {
       state.mathEngine = action.payload
@@ -776,8 +781,11 @@ const settingsSlice = createSlice({
     setEnableQuickPanelTriggers: (state, action: PayloadAction<boolean>) => {
       state.enableQuickPanelTriggers = action.payload
     },
-    setEnableBackspaceDeleteModel: (state, action: PayloadAction<boolean>) => {
-      state.enableBackspaceDeleteModel = action.payload
+    setConfirmDeleteMessage: (state, action: PayloadAction<boolean>) => {
+      state.confirmDeleteMessage = action.payload
+    },
+    setConfirmRegenerateMessage: (state, action: PayloadAction<boolean>) => {
+      state.confirmRegenerateMessage = action.payload
     },
     setDisableHardwareAcceleration: (state, action: PayloadAction<boolean>) => {
       state.disableHardwareAcceleration = action.payload
@@ -863,7 +871,6 @@ export const {
   setProxyBypassRules,
   setUserName,
   setShowPrompt,
-  setShowTokens,
   setShowMessageDivider,
   setMessageFont,
   setShowInputEstimatedTokens,
@@ -902,6 +909,7 @@ export const {
   setCodeCollapsible,
   setCodeWrappable,
   setCodeImageTools,
+  setCodeFancyBlock,
   setMathEngine,
   setMathEnableSingleDollar,
   setFoldDisplayMode,
@@ -953,7 +961,8 @@ export const {
   setSpellCheckLanguages,
   setExportMenuOptions,
   setEnableQuickPanelTriggers,
-  setEnableBackspaceDeleteModel,
+  setConfirmDeleteMessage,
+  setConfirmRegenerateMessage,
   setDisableHardwareAcceleration,
   setOpenAISummaryText,
   setOpenAIVerbosity,

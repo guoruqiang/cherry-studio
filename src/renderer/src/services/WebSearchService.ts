@@ -55,7 +55,7 @@ class WebSearchService {
     dispose: (requestState: RequestState, requestId: string) => {
       if (!requestState.searchBase) return
       window.api.knowledgeBase
-        .delete(requestState.searchBase.id)
+        .delete(getKnowledgeBaseParams(requestState.searchBase), requestState.searchBase.id)
         .catch((error) => logger.warn(`Failed to cleanup search base for ${requestId}:`, error))
     }
   })
@@ -150,6 +150,7 @@ class WebSearchService {
    */
   public getWebSearchProvider(providerId?: string): WebSearchProvider | undefined {
     const { providers } = this.getWebSearchState()
+    logger.debug('providers', providers)
     const provider = providers.find((provider) => provider.id === providerId)
 
     return provider
@@ -177,12 +178,7 @@ class WebSearchService {
       formattedQuery = `today is ${dayjs().format('YYYY-MM-DD')} \r\n ${query}`
     }
 
-    // try {
     return await webSearchEngine.search(formattedQuery, websearch, httpOptions)
-    // } catch (error) {
-    //   console.error('Search failed:', error)
-    //   throw new Error(`Search failed: ${error instanceof Error ? error.message : 'Unknown error'}`)
-    // }
   }
 
   /**
@@ -230,7 +226,7 @@ class WebSearchService {
 
     // 清理旧的知识库
     if (state.searchBase) {
-      await window.api.knowledgeBase.delete(state.searchBase.id)
+      await window.api.knowledgeBase.delete(getKnowledgeBaseParams(state.searchBase), state.searchBase.id)
     }
 
     if (!config.embeddingModel) {
@@ -248,7 +244,8 @@ class WebSearchService {
       items: [],
       created_at: Date.now(),
       updated_at: Date.now(),
-      version: 1
+      version: 1,
+      framework: 'langchain'
     }
 
     // 更新LRU cache
@@ -286,6 +283,8 @@ class WebSearchService {
     // 2. 合并所有结果并按分数排序
     const flatResults = allResults.flat().sort((a, b) => b.score - a.score)
 
+    logger.debug(`Found ${flatResults.length} result(s) in search base related to question(s): `, questions)
+
     // 3. 去重，保留最高分的重复内容
     const seen = new Set<string>()
     const uniqueResults = flatResults.filter((item) => {
@@ -295,6 +294,8 @@ class WebSearchService {
       seen.add(item.pageContent)
       return true
     })
+
+    logger.debug(`Found ${uniqueResults.length} unique result(s) from search base after sorting and deduplication`)
 
     // 4. 转换为引用格式
     return await Promise.all(
@@ -330,12 +331,17 @@ class WebSearchService {
       Math.max(0, rawResults.length) * (config.documentCount ?? DEFAULT_WEBSEARCH_RAG_DOCUMENT_COUNT)
 
     const searchBase = await this.ensureSearchBase(config, totalDocumentCount, requestId)
+    logger.debug('Search base for RAG compression: ', searchBase)
 
     // 1. 清空知识库
-    await window.api.knowledgeBase.reset(getKnowledgeBaseParams(searchBase))
+    const baseParams = getKnowledgeBaseParams(searchBase)
+    await window.api.knowledgeBase.reset(baseParams)
 
-    // 2. 一次性添加所有搜索结果到知识库
-    const addPromises = rawResults.map(async (result) => {
+    logger.debug('Search base parameters for RAG compression: ', baseParams)
+
+    // 2. 顺序添加所有搜索结果到知识库
+    // FIXME: 目前的知识库 add 不支持并发
+    for (const result of rawResults) {
       const item: KnowledgeItem & { sourceUrl?: string } = {
         id: uuid(),
         type: 'note',
@@ -350,10 +356,7 @@ class WebSearchService {
         base: getKnowledgeBaseParams(searchBase),
         item
       })
-    })
-
-    // 等待所有结果添加完成
-    await Promise.all(addPromises)
+    }
 
     // 3. 对知识库执行多问题搜索获取压缩结果
     const references = await this.querySearchBase(questions, searchBase)
@@ -478,6 +481,7 @@ class WebSearchService {
 
     // 统计成功完成的搜索数量
     const successfulSearchCount = searchResults.filter((result) => result.status === 'fulfilled').length
+    logger.verbose(`Successful search count: ${successfulSearchCount}`)
     if (successfulSearchCount > 1) {
       await this.setWebSearchStatus(
         requestId,
@@ -500,6 +504,12 @@ class WebSearchService {
         throw result.reason
       }
     })
+
+    logger.verbose(`FulFilled search result count: ${finalResults.length}`)
+    logger.verbose(
+      'FulFilled search result: ',
+      finalResults.map(({ title, url }) => ({ title, url }))
+    )
 
     // 如果没有搜索结果，直接返回空结果
     if (finalResults.length === 0) {
@@ -539,10 +549,9 @@ class WebSearchService {
         )
       } catch (error) {
         logger.warn('RAG compression failed, will return empty results:', error as Error)
-        window.message.error({
-          key: 'websearch-rag-failed',
-          duration: 10,
-          content: `${i18n.t('settings.tool.websearch.compression.error.rag_failed')}: ${formatErrorMessage(error)}`
+        window.toast.error({
+          timeout: 10000,
+          title: `${i18n.t('settings.tool.websearch.compression.error.rag_failed')}: ${formatErrorMessage(error)}`
         })
 
         finalResults = []

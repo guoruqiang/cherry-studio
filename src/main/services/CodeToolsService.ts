@@ -3,9 +3,11 @@ import os from 'node:os'
 import path from 'node:path'
 
 import { loggerService } from '@logger'
+import { isWin } from '@main/constant'
 import { removeEnvProxy } from '@main/utils'
 import { isUserInChina } from '@main/utils/ipService'
 import { getBinaryName } from '@main/utils/process'
+import { codeTools } from '@shared/config/constant'
 import { spawn } from 'child_process'
 import { promisify } from 'util'
 
@@ -40,23 +42,33 @@ class CodeToolsService {
   }
 
   public async getPackageName(cliTool: string) {
-    if (cliTool === 'claude-code') {
-      return '@anthropic-ai/claude-code'
+    switch (cliTool) {
+      case codeTools.claudeCode:
+        return '@anthropic-ai/claude-code'
+      case codeTools.geminiCli:
+        return '@google/gemini-cli'
+      case codeTools.openaiCodex:
+        return '@openai/codex'
+      case codeTools.qwenCode:
+        return '@qwen-code/qwen-code'
+      default:
+        throw new Error(`Unsupported CLI tool: ${cliTool}`)
     }
-    if (cliTool === 'gemini-cli') {
-      return '@google/gemini-cli'
-    }
-    return '@qwen-code/qwen-code'
   }
 
   public async getCliExecutableName(cliTool: string) {
-    if (cliTool === 'claude-code') {
-      return 'claude'
+    switch (cliTool) {
+      case codeTools.claudeCode:
+        return 'claude'
+      case codeTools.geminiCli:
+        return 'gemini'
+      case codeTools.openaiCodex:
+        return 'codex'
+      case codeTools.qwenCode:
+        return 'qwen'
+      default:
+        throw new Error(`Unsupported CLI tool: ${cliTool}`)
     }
-    if (cliTool === 'gemini-cli') {
-      return 'gemini'
-    }
-    return 'qwen'
   }
 
   private async isPackageInstalled(cliTool: string): Promise<boolean> {
@@ -114,9 +126,21 @@ class CodeToolsService {
     } else {
       logger.info(`Fetching latest version for ${packageName} from npm`)
       try {
-        const bunPath = await this.getBunPath()
-        const { stdout } = await execAsync(`"${bunPath}" info ${packageName} version`, { timeout: 15000 })
-        latestVersion = stdout.trim().replace(/["']/g, '')
+        // Get registry URL
+        const registryUrl = await this.getNpmRegistryUrl()
+
+        // Fetch package info directly from npm registry API
+        const packageUrl = `${registryUrl}/${packageName}/latest`
+        const response = await fetch(packageUrl, {
+          signal: AbortSignal.timeout(15000)
+        })
+
+        if (!response.ok) {
+          throw new Error(`Failed to fetch package info: ${response.statusText}`)
+        }
+
+        const packageInfo = await response.json()
+        latestVersion = packageInfo.version
         logger.info(`${packageName} latest version: ${latestVersion}`)
 
         // Cache the result
@@ -283,12 +307,11 @@ class CodeToolsService {
     }
 
     // Build command to execute
-    let baseCommand: string
+    let baseCommand = isWin ? `"${executablePath}"` : `"${bunPath}" "${executablePath}"`
     const bunInstallPath = path.join(os.homedir(), '.cherrystudio')
 
     if (isInstalled) {
       // If already installed, run executable directly (with optional update message)
-      baseCommand = `"${executablePath}"`
       if (updateMessage) {
         baseCommand = `echo "Checking ${cliTool} version..."${updateMessage} && ${baseCommand}`
       }
@@ -301,7 +324,7 @@ class CodeToolsService {
           : `export BUN_INSTALL="${bunInstallPath}" && export NPM_CONFIG_REGISTRY="${registryUrl}" &&`
 
       const installCommand = `${installEnvPrefix} "${bunPath}" install -g ${packageName}`
-      baseCommand = `echo "Installing ${packageName}..." && ${installCommand} && echo "Installation complete, starting ${cliTool}..." && "${executablePath}"`
+      baseCommand = `echo "Installing ${packageName}..." && ${installCommand} && echo "Installation complete, starting ${cliTool}..." && ${baseCommand}`
     }
 
     switch (platform) {
@@ -309,13 +332,15 @@ class CodeToolsService {
         // macOS - Use osascript to launch terminal and execute command directly, without showing startup command
         const envPrefix = buildEnvPrefix(false)
         const command = envPrefix ? `${envPrefix} && ${baseCommand}` : baseCommand
+        // Combine directory change with the main command to ensure they execute in the same shell session
+        const fullCommand = `cd '${directory.replace(/'/g, "\\'")}' && clear && ${command}`
 
         terminalCommand = 'osascript'
         terminalArgs = [
           '-e',
           `tell application "Terminal"
+  do script "${fullCommand.replace(/"/g, '\\"')}"
   activate
-  do script "cd '${directory.replace(/'/g, "\\'")}' && clear && ${command.replace(/"/g, '\\"')}"
 end tell`
         ]
         break
@@ -397,7 +422,7 @@ end tell`
         const envPrefix = buildEnvPrefix(false)
         const command = envPrefix ? `${envPrefix} && ${baseCommand}` : baseCommand
 
-        const linuxTerminals = ['gnome-terminal', 'konsole', 'xterm', 'x-terminal-emulator']
+        const linuxTerminals = ['gnome-terminal', 'konsole', 'deepin-terminal', 'xterm', 'x-terminal-emulator']
         let foundTerminal = 'xterm' // Default to xterm
 
         for (const terminal of linuxTerminals) {
@@ -424,6 +449,9 @@ end tell`
         } else if (foundTerminal === 'konsole') {
           terminalCommand = 'konsole'
           terminalArgs = ['--workdir', directory, '-e', 'bash', '-c', `clear && ${command}; exec bash`]
+        } else if (foundTerminal === 'deepin-terminal') {
+          terminalCommand = 'deepin-terminal'
+          terminalArgs = ['-w', directory, '-e', 'bash', '-c', `clear && ${command}; exec bash`]
         } else {
           // Default to xterm
           terminalCommand = 'xterm'

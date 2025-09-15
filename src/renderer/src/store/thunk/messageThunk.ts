@@ -1,9 +1,9 @@
 import { loggerService } from '@logger'
 import db from '@renderer/databases'
-import { fetchChatCompletion } from '@renderer/services/ApiService'
 import FileManager from '@renderer/services/FileManager'
 import { BlockManager } from '@renderer/services/messageStreaming/BlockManager'
 import { createCallbacks } from '@renderer/services/messageStreaming/callbacks'
+import { transformMessagesAndFetch } from '@renderer/services/OrchestrateService'
 import { endSpan } from '@renderer/services/SpanManagerService'
 import { createStreamProcessor, type StreamProcessorCallbacks } from '@renderer/services/StreamProcessingService'
 import store from '@renderer/store'
@@ -12,13 +12,14 @@ import { type Assistant, type FileMetadata, type Model, type Topic } from '@rend
 import type { FileMessageBlock, ImageMessageBlock, Message, MessageBlock } from '@renderer/types/newMessage'
 import { AssistantMessageStatus, MessageBlockStatus, MessageBlockType } from '@renderer/types/newMessage'
 import { uuid } from '@renderer/utils'
+import { addAbortController } from '@renderer/utils/abortController'
 import {
   createAssistantMessage,
   createTranslationBlock,
   resetAssistantMessage
 } from '@renderer/utils/messageUtils/create'
-import { getTopicQueue } from '@renderer/utils/queue'
-import { waitForTopicQueue } from '@renderer/utils/queue'
+import { getTopicQueue, waitForTopicQueue } from '@renderer/utils/queue'
+import { defaultAppHeaders } from '@shared/utils'
 import { t } from 'i18next'
 import { isEmpty, throttle } from 'lodash'
 import { LRUCache } from 'lru-cache'
@@ -155,6 +156,7 @@ const getBlockThrottler = (id: string) => {
  */
 export const throttledBlockUpdate = (id: string, blockUpdate: any) => {
   const throttler = getBlockThrottler(id)
+  // store.dispatch(updateOneBlock({ id, changes: blockUpdate }))
   throttler(blockUpdate)
 }
 
@@ -288,14 +290,18 @@ const dispatchMultiModelResponses = async (
 }
 
 // --- End Helper Function ---
-
+// 发送和处理助手响应的实现函数，话题提示词在此拼接
 const fetchAndProcessAssistantResponseImpl = async (
   dispatch: AppDispatch,
   getState: () => RootState,
   topicId: string,
-  assistant: Assistant,
+  origAssistant: Assistant,
   assistantMessage: Message // Pass the prepared assistant message (new or reset)
 ) => {
+  const topic = origAssistant.topics.find((t) => t.id === topicId)
+  const assistant = topic?.prompt
+    ? { ...origAssistant, prompt: `${origAssistant.prompt}\n${topic.prompt}` }
+    : origAssistant
   const assistantMsgId = assistantMessage.id
   let callbacks: StreamProcessorCallbacks = {}
   try {
@@ -334,6 +340,15 @@ const fetchAndProcessAssistantResponseImpl = async (
       messagesForContext = contextSlice.filter((m) => m && !m.status?.includes('ing'))
     }
 
+    // Ensure at least the triggering user message is present to avoid empty payloads
+    if ((!messagesForContext || messagesForContext.length === 0) && userMessageId) {
+      const stateAfter = getState()
+      const maybeUserMessage = stateAfter.messages.entities[userMessageId]
+      if (maybeUserMessage) {
+        messagesForContext = [maybeUserMessage]
+      }
+    }
+
     callbacks = createCallbacks({
       blockManager,
       dispatch,
@@ -345,28 +360,37 @@ const fetchAndProcessAssistantResponseImpl = async (
     })
     const streamProcessorCallbacks = createStreamProcessor(callbacks)
 
-    // const startTime = Date.now()
-    const result = await fetchChatCompletion({
-      messages: messagesForContext,
-      assistant: assistant,
-      onChunkReceived: streamProcessorCallbacks
-    })
-    endSpan({
-      topicId,
-      outputs: result ? result.getText() : '',
-      modelName: assistant.model?.name,
-      modelEnded: true
-    })
+    const abortController = new AbortController()
+    addAbortController(userMessageId!, () => abortController.abort())
+
+    await transformMessagesAndFetch(
+      {
+        messages: messagesForContext,
+        assistant,
+        topicId,
+        options: {
+          signal: abortController.signal,
+          timeout: 30000,
+          headers: defaultAppHeaders()
+        }
+      },
+      streamProcessorCallbacks
+    )
   } catch (error: any) {
-    logger.error('Error fetching chat completion:', error)
+    logger.error('Error in fetchAndProcessAssistantResponseImpl:', error)
     endSpan({
       topicId,
       error: error,
       modelName: assistant.model?.name
     })
-    if (assistantMessage) {
-      callbacks.onError?.(error)
-      throw error
+    // 统一错误处理：确保 loading 状态被正确设置，避免队列任务卡住
+    try {
+      await callbacks.onError?.(error)
+    } catch (callbackError) {
+      logger.error('Error in onError callback:', callbackError as Error)
+    } finally {
+      // 确保无论如何都设置 loading 为 false（onError 回调中已设置，这里是保险）
+      dispatch(newMessagesActions.setTopicLoading({ topicId, loading: false }))
     }
   }
 }
@@ -713,10 +737,7 @@ export const regenerateAssistantResponseThunk =
         )
 
         // Show error popup instead of creating error message block
-        window.message.error({
-          content: t('error.missing_user_message'),
-          key: 'missing-user-message-error'
-        })
+        window.toast.error(t('error.missing_user_message'))
 
         return
       }
@@ -936,10 +957,7 @@ export const appendAssistantResponseThunk =
         )
 
         // Show error popup instead of creating error message block
-        window.message.error({
-          content: t('error.missing_user_message'),
-          key: 'missing-user-message-error'
-        })
+        window.toast.error(t('error.missing_user_message'))
 
         return
       }
@@ -957,10 +975,10 @@ export const appendAssistantResponseThunk =
       const existingMessageIndex = currentTopicMessageIds.findIndex((id) => id === existingAssistantMessageId)
       const insertAtIndex = existingMessageIndex !== -1 ? existingMessageIndex + 1 : currentTopicMessageIds.length
 
-      dispatch(newMessagesActions.insertMessageAtIndex({ topicId, message: newAssistantStub, index: insertAtIndex }))
-
       // 4. Update Database (Save the stub to the topic's message list)
       await saveMessageAndBlocksToDB(newAssistantStub, [], insertAtIndex)
+
+      dispatch(newMessagesActions.insertMessageAtIndex({ topicId, message: newAssistantStub, index: insertAtIndex }))
 
       // 5. Prepare and queue the processing task
       const assistantConfigForThisCall = {
@@ -1057,7 +1075,7 @@ export const cloneMessagesToNewTopicThunk =
             const oldBlock = state.messageBlocks.entities[oldBlockId]
             if (oldBlock) {
               const newBlockId = uuid()
-              const newBlock: MessageBlock = {
+              const newBlock = {
                 ...oldBlock,
                 id: newBlockId,
                 messageId: newMsgId // Link block to the NEW message ID
