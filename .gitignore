@@ -73,3 +73,7 @@ test-results
 YOUR_MEMORY_FILE_PATH
 
 .sessions/
+
+# Installation scripts (local only)
+INSTALL_GUIDE.md
+install-env.sh
