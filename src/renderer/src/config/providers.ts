@@ -3,6 +3,7 @@ import HunyuanProviderLogo from '@renderer/assets/images/models/hunyuan.png'
 import AzureProviderLogo from '@renderer/assets/images/models/microsoft.png'
 import Ai302ProviderLogo from '@renderer/assets/images/providers/302ai.webp'
 import AiHubMixProviderLogo from '@renderer/assets/images/providers/aihubmix.webp'
+import AiOnlyProviderLogo from '@renderer/assets/images/providers/aiOnly.webp'
 import AlayaNewProviderLogo from '@renderer/assets/images/providers/alayanew.webp'
 import AnthropicProviderLogo from '@renderer/assets/images/providers/anthropic.png'
 import AwsProviderLogo from '@renderer/assets/images/providers/aws-bedrock.webp'
@@ -21,11 +22,14 @@ import GoogleProviderLogo from '@renderer/assets/images/providers/google.png'
 import GPUStackProviderLogo from '@renderer/assets/images/providers/gpustack.svg'
 import GrokProviderLogo from '@renderer/assets/images/providers/grok.png'
 import GroqProviderLogo from '@renderer/assets/images/providers/groq.png'
+import HuggingfaceProviderLogo from '@renderer/assets/images/providers/huggingface.webp'
 import HyperbolicProviderLogo from '@renderer/assets/images/providers/hyperbolic.png'
 import InfiniProviderLogo from '@renderer/assets/images/providers/infini.png'
+import IntelOvmsLogo from '@renderer/assets/images/providers/intel.png'
 import JinaProviderLogo from '@renderer/assets/images/providers/jina.png'
 import LanyunProviderLogo from '@renderer/assets/images/providers/lanyun.png'
 import LMStudioProviderLogo from '@renderer/assets/images/providers/lmstudio.png'
+import LongCatProviderLogo from '@renderer/assets/images/providers/longcat.png'
 import MinimaxProviderLogo from '@renderer/assets/images/providers/minimax.png'
 import MistralProviderLogo from '@renderer/assets/images/providers/mistral.png'
 import ModelScopeProviderLogo from '@renderer/assets/images/providers/modelscope.png'
@@ -42,6 +46,7 @@ import Ph8ProviderLogo from '@renderer/assets/images/providers/ph8.png'
 import PPIOProviderLogo from '@renderer/assets/images/providers/ppio.png'
 import QiniuProviderLogo from '@renderer/assets/images/providers/qiniu.webp'
 import SiliconFlowProviderLogo from '@renderer/assets/images/providers/silicon.png'
+import SophnetProviderLogo from '@renderer/assets/images/providers/sophnet.svg'
 import StepProviderLogo from '@renderer/assets/images/providers/step.png'
 import TencentCloudProviderLogo from '@renderer/assets/images/providers/tencent-cloud-ti.png'
 import TogetherProviderLogo from '@renderer/assets/images/providers/together.png'
@@ -52,17 +57,30 @@ import VoyageAIProviderLogo from '@renderer/assets/images/providers/voyageai.png
 import XirangProviderLogo from '@renderer/assets/images/providers/xirang.png'
 import ZeroOneProviderLogo from '@renderer/assets/images/providers/zero-one.png'
 import ZhipuProviderLogo from '@renderer/assets/images/providers/zhipu.png'
-import {
+import type {
   AtLeast,
-  isSystemProvider,
+  AzureOpenAIProvider,
   Provider,
   ProviderType,
   SystemProvider,
   SystemProviderId
 } from '@renderer/types'
+import { isSystemProvider } from '@renderer/types'
 
 import { TOKENFLUX_HOST } from './constant'
-import { SYSTEM_MODELS } from './models'
+import { glm45FlashModel, qwen38bModel, SYSTEM_MODELS } from './models'
+
+export const CHERRYAI_PROVIDER: SystemProvider = {
+  id: 'cherryai' as SystemProviderId,
+  name: 'CherryAI',
+  type: 'openai',
+  apiKey: '',
+  apiHost: 'https://api.cherry-ai.com/',
+  anthropicApiHost: 'https://api.cherry-ai.com',
+  models: [glm45FlashModel, qwen38bModel],
+  isSystem: true,
+  enabled: true
+}
 
 export const SYSTEM_PROVIDERS_CONFIG: Partial<Record<SystemProviderId, SystemProvider>> = {
   // cherryin: {
@@ -248,7 +266,7 @@ export const SYSTEM_PROVIDERS_CONFIG: Partial<Record<SystemProviderId, SystemPro
   'new-api': {
     id: 'new-api',
     name: 'New API',
-    type: 'openai',
+    type: 'new-api',
     apiKey: '',
     apiHost: 'https://api.nwafu-ai.cn',
     models: SYSTEM_MODELS['new-api'],
@@ -615,6 +633,7 @@ export const PROVIDER_LOGO_MAP: AtLeast<SystemProviderId, string> = {
   yi: ZeroOneProviderLogo,
   groq: GroqProviderLogo,
   zhipu: ZhipuProviderLogo,
+  ovms: IntelOvmsLogo,
   ollama: OllamaProviderLogo,
   lmstudio: LMStudioProviderLogo,
   moonshot: MoonshotProviderLogo,
@@ -660,7 +679,11 @@ export const PROVIDER_LOGO_MAP: AtLeast<SystemProviderId, string> = {
   vertexai: VertexAIProviderLogo,
   'new-api': NewAPIProviderLogo,
   'aws-bedrock': AwsProviderLogo,
-  poe: 'poe' // use svg icon component
+  poe: 'poe', // use svg icon component
+  aionly: AiOnlyProviderLogo,
+  longcat: LongCatProviderLogo,
+  huggingface: HuggingfaceProviderLogo,
+  sophnet: SophnetProviderLogo
 } as const
 
 export function getProviderLogo(providerId: string) {
@@ -686,12 +709,13 @@ type ProviderUrls = {
 export const PROVIDER_URLS: Record<SystemProviderId, ProviderUrls> = {
   cherryin: {
     api: {
-      url: 'https://api.cherry-ai.com'
+      url: 'https://open.cherryin.net'
     },
     websites: {
-      official: 'https://cherry-ai.com',
-      docs: 'https://docs.cherry-ai.com',
-      models: 'https://docs.cherry-ai.com/pre-basic/providers/cherryin'
+      official: 'https://open.cherryin.ai',
+      apiKey: 'https://open.cherryin.ai/console/token',
+      docs: 'https://open.cherryin.ai',
+      models: 'https://open.cherryin.ai/pricing'
     }
   },
   ph8: {
@@ -736,6 +760,17 @@ export const PROVIDER_URLS: Record<SystemProviderId, ProviderUrls> = {
       apiKey: 'https://ai.burncloud.com/token',
       docs: 'https://ai.burncloud.com/docs',
       models: 'https://ai.burncloud.com/pricing'
+    }
+  },
+  sophnet: {
+    api: {
+      url: 'https://www.sophnet.com/api/open-apis/v1'
+    },
+    websites: {
+      official: 'https://sophnet.com',
+      apiKey: 'https://sophnet.com/#/project/key',
+      docs: 'https://sophnet.com/docs/component/introduce.html',
+      models: 'https://sophnet.com/#/model/list'
     }
   },
   ppio: {
@@ -997,6 +1032,16 @@ export const PROVIDER_URLS: Record<SystemProviderId, ProviderUrls> = {
       models: 'https://console.groq.com/docs/models'
     }
   },
+  ovms: {
+    api: {
+      url: 'http://localhost:8000/v3/'
+    },
+    websites: {
+      official: 'https://www.intel.com/content/www/us/en/developer/tools/openvino-toolkit/overview.html',
+      docs: 'https://docs.openvino.ai/2025/model-server/ovms_what_is_openvino_model_server.html',
+      models: 'https://www.modelscope.cn/organization/OpenVINO'
+    }
+  },
   ollama: {
     api: {
       url: 'http://localhost:11434'
@@ -1019,7 +1064,7 @@ export const PROVIDER_URLS: Record<SystemProviderId, ProviderUrls> = {
   },
   anthropic: {
     api: {
-      url: 'https://api.anthropic.com/'
+      url: 'https://api.anthropic.com'
     },
     websites: {
       official: 'https://anthropic.com/',
@@ -1215,7 +1260,7 @@ export const PROVIDER_URLS: Record<SystemProviderId, ProviderUrls> = {
   },
   vertexai: {
     api: {
-      url: 'https://console.cloud.google.com/apis/api/aiplatform.googleapis.com/overview'
+      url: ''
     },
     websites: {
       official: 'https://cloud.google.com/vertex-ai',
@@ -1254,6 +1299,39 @@ export const PROVIDER_URLS: Record<SystemProviderId, ProviderUrls> = {
       docs: 'https://creator.poe.com/docs/external-applications/openai-compatible-api',
       models: 'https://poe.com/'
     }
+  },
+  aionly: {
+    api: {
+      url: 'https://api.aiionly.com'
+    },
+    websites: {
+      official: 'https://www.aiionly.com',
+      apiKey: 'https://www.aiionly.com/keyApi',
+      docs: 'https://www.aiionly.com/document',
+      models: 'https://www.aiionly.com'
+    }
+  },
+  longcat: {
+    api: {
+      url: 'https://api.longcat.chat/openai'
+    },
+    websites: {
+      official: 'https://longcat.chat',
+      apiKey: 'https://longcat.chat/platform/api_keys',
+      docs: 'https://longcat.chat/platform/docs/zh/',
+      models: 'https://longcat.chat/platform/docs/zh/APIDocs.html'
+    }
+  },
+  huggingface: {
+    api: {
+      url: 'https://router.huggingface.co/v1/'
+    },
+    websites: {
+      official: 'https://huggingface.co/',
+      apiKey: 'https://huggingface.co/settings/tokens',
+      docs: 'https://huggingface.co/docs',
+      models: 'https://huggingface.co/models'
+    }
   }
 }
 
@@ -1262,7 +1340,8 @@ const NOT_SUPPORT_ARRAY_CONTENT_PROVIDERS = [
   'baichuan',
   'minimax',
   'xirang',
-  'poe'
+  'poe',
+  'cephalon'
 ] as const satisfies SystemProviderId[]
 
 /**
@@ -1327,10 +1406,15 @@ export const isSupportServiceTierProvider = (provider: Provider) => {
   )
 }
 
-const SUPPORT_GEMINI_URL_CONTEXT_PROVIDER_TYPES = ['gemini', 'vertexai'] as const satisfies ProviderType[]
+const SUPPORT_URL_CONTEXT_PROVIDER_TYPES = [
+  'gemini',
+  'vertexai',
+  'anthropic',
+  'new-api'
+] as const satisfies ProviderType[]
 
 export const isSupportUrlContextProvider = (provider: Provider) => {
-  return SUPPORT_GEMINI_URL_CONTEXT_PROVIDER_TYPES.some((type) => type === provider.type)
+  return SUPPORT_URL_CONTEXT_PROVIDER_TYPES.some((type) => type === provider.type)
 }
 
 const SUPPORT_GEMINI_NATIVE_WEB_SEARCH_PROVIDERS = ['gemini', 'vertexai'] as const satisfies SystemProviderId[]
@@ -1338,4 +1422,50 @@ const SUPPORT_GEMINI_NATIVE_WEB_SEARCH_PROVIDERS = ['gemini', 'vertexai'] as con
 /** 判断是否是使用 Gemini 原生搜索工具的 provider. 目前假设只有官方 API 使用原生工具 */
 export const isGeminiWebSearchProvider = (provider: Provider) => {
   return SUPPORT_GEMINI_NATIVE_WEB_SEARCH_PROVIDERS.some((id) => id === provider.id)
+}
+
+export const isNewApiProvider = (provider: Provider) => {
+  return ['new-api', 'cherryin'].includes(provider.id) || provider.type === 'new-api'
+}
+
+export function isCherryAIProvider(provider: Provider): boolean {
+  return provider.id === 'cherryai'
+}
+
+export function isPerplexityProvider(provider: Provider): boolean {
+  return provider.id === 'perplexity'
+}
+
+/**
+ * 判断是否为 OpenAI 兼容的提供商
+ * @param {Provider} provider 提供商对象
+ * @returns {boolean} 是否为 OpenAI 兼容提供商
+ */
+export function isOpenAICompatibleProvider(provider: Provider): boolean {
+  return ['openai', 'new-api', 'mistral'].includes(provider.type)
+}
+
+export function isAzureOpenAIProvider(provider: Provider): provider is AzureOpenAIProvider {
+  return provider.type === 'azure-openai'
+}
+
+export function isOpenAIProvider(provider: Provider): boolean {
+  return provider.type === 'openai-response'
+}
+
+export function isAnthropicProvider(provider: Provider): boolean {
+  return provider.type === 'anthropic'
+}
+
+export function isGeminiProvider(provider: Provider): boolean {
+  return provider.type === 'gemini'
+}
+
+const NOT_SUPPORT_API_VERSION_PROVIDERS = ['github', 'copilot', 'perplexity'] as const satisfies SystemProviderId[]
+
+export const isSupportAPIVersionProvider = (provider: Provider) => {
+  if (isSystemProvider(provider)) {
+    return !NOT_SUPPORT_API_VERSION_PROVIDERS.some((pid) => pid === provider.id)
+  }
+  return provider.apiOptions?.isNotSupportAPIVersion !== false
 }

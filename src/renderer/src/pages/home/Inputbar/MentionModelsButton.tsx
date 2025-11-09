@@ -1,17 +1,18 @@
+import { ActionIconButton } from '@renderer/components/Buttons'
 import ModelTagsWithLabel from '@renderer/components/ModelTagsWithLabel'
-import { useQuickPanel } from '@renderer/components/QuickPanel'
-import { QuickPanelListItem } from '@renderer/components/QuickPanel/types'
+import { type QuickPanelListItem, QuickPanelReservedSymbol, useQuickPanel } from '@renderer/components/QuickPanel'
 import { getModelLogo, isEmbeddingModel, isRerankModel, isVisionModel } from '@renderer/config/models'
 import db from '@renderer/databases'
 import { useProviders } from '@renderer/hooks/useProvider'
 import { getModelUniqId } from '@renderer/services/ModelService'
-import { FileType, Model } from '@renderer/types'
+import type { FileType, Model } from '@renderer/types'
 import { getFancyProviderName } from '@renderer/utils'
 import { Avatar, Tooltip } from 'antd'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { first, sortBy } from 'lodash'
 import { AtSign, CircleX, Plus } from 'lucide-react'
-import { FC, memo, useCallback, useEffect, useImperativeHandle, useMemo, useRef } from 'react'
+import type { FC } from 'react'
+import { memo, useCallback, useEffect, useImperativeHandle, useMemo, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router'
 import styled from 'styled-components'
@@ -27,7 +28,6 @@ interface Props {
   onClearMentionModels: () => void
   couldMentionNotVisionModel: boolean
   files: FileType[]
-  ToolbarButton: any
   setText: React.Dispatch<React.SetStateAction<string>>
 }
 
@@ -38,7 +38,6 @@ const MentionModelsButton: FC<Props> = ({
   onClearMentionModels,
   couldMentionNotVisionModel,
   files,
-  ToolbarButton,
   setText
 }) => {
   const { providers } = useProviders()
@@ -91,7 +90,7 @@ const MentionModelsButton: FC<Props> = ({
           // 兜底：使用打开时的 position（若存在），按空白边界删除
           if (typeof fallbackPosition === 'number' && currentText[fallbackPosition] === '@') {
             let endPos = fallbackPosition + 1
-            while (endPos < currentText.length && currentText[endPos] !== ' ' && currentText[endPos] !== '\n') {
+            while (endPos < currentText.length && !/\s/.test(currentText[endPos])) {
               endPos++
             }
             return currentText.slice(0, fallbackPosition) + currentText.slice(endPos)
@@ -100,7 +99,7 @@ const MentionModelsButton: FC<Props> = ({
         }
 
         let endPos = start + 1
-        while (endPos < currentText.length && currentText[endPos] !== ' ' && currentText[endPos] !== '\n') {
+        while (endPos < currentText.length && !/\s/.test(currentText[endPos])) {
           endPos++
         }
         return currentText.slice(0, start) + currentText.slice(endPos)
@@ -136,7 +135,7 @@ const MentionModelsButton: FC<Props> = ({
             ),
             description: <ModelTagsWithLabel model={m} showLabel={false} size={10} style={{ opacity: 0.8 }} />,
             icon: (
-              <Avatar src={getModelLogo(m.id)} size={20}>
+              <Avatar src={getModelLogo(m)} size={20}>
                 {first(m.name)}
               </Avatar>
             ),
@@ -172,7 +171,7 @@ const MentionModelsButton: FC<Props> = ({
         ),
         description: <ModelTagsWithLabel model={m} showLabel={false} size={10} style={{ opacity: 0.8 }} />,
         icon: (
-          <Avatar src={getModelLogo(m.id)} size={20}>
+          <Avatar src={getModelLogo(m)} size={20}>
             {first(m.name)}
           </Avatar>
         ),
@@ -240,9 +239,9 @@ const MentionModelsButton: FC<Props> = ({
       triggerInfoRef.current = triggerInfo
 
       quickPanel.open({
-        title: t('agents.edit.model.select.title'),
+        title: t('assistants.presets.edit.model.select.title'),
         list: modelItems,
-        symbol: '@',
+        symbol: QuickPanelReservedSymbol.MentionModels,
         multiple: true,
         triggerInfo: triggerInfo || { type: 'button' },
         afterAction({ item }) {
@@ -252,21 +251,19 @@ const MentionModelsButton: FC<Props> = ({
           // ESC关闭时的处理：删除 @ 和搜索文本
           if (action === 'esc') {
             // 只有在输入触发且有模型选择动作时才删除@字符和搜索文本
-            if (
-              hasModelActionRef.current &&
-              ctx.triggerInfo?.type === 'input' &&
-              ctx.triggerInfo?.position !== undefined
-            ) {
+            const triggerInfo = ctx?.triggerInfo ?? triggerInfoRef.current
+            if (hasModelActionRef.current && triggerInfo?.type === 'input' && triggerInfo?.position !== undefined) {
               // 基于当前光标 + 搜索词精确定位并删除，position 仅作兜底
               setText((currentText) => {
                 const textArea = document.querySelector('.inputbar textarea') as HTMLTextAreaElement | null
                 const caret = textArea ? (textArea.selectionStart ?? currentText.length) : currentText.length
-                return removeAtSymbolAndText(currentText, caret, searchText || '', ctx.triggerInfo?.position!)
+                return removeAtSymbolAndText(currentText, caret, searchText || '', triggerInfo.position!)
               })
             }
           }
           // Backspace删除@的情况（delete-symbol）：
           // @ 已经被Backspace自然删除，面板关闭，不需要额外操作
+          triggerInfoRef.current = undefined
         }
       })
     },
@@ -274,7 +271,7 @@ const MentionModelsButton: FC<Props> = ({
   )
 
   const handleOpenQuickPanel = useCallback(() => {
-    if (quickPanel.isVisible && quickPanel.symbol === '@') {
+    if (quickPanel.isVisible && quickPanel.symbol === QuickPanelReservedSymbol.MentionModels) {
       quickPanel.close()
     } else {
       openQuickPanel({ type: 'button' })
@@ -286,7 +283,7 @@ const MentionModelsButton: FC<Props> = ({
   useEffect(() => {
     // 检查files是否变化
     if (filesRef.current !== files) {
-      if (quickPanel.isVisible && quickPanel.symbol === '@') {
+      if (quickPanel.isVisible && quickPanel.symbol === QuickPanelReservedSymbol.MentionModels) {
         quickPanel.close()
       }
       filesRef.current = files
@@ -295,7 +292,7 @@ const MentionModelsButton: FC<Props> = ({
 
   // 监听 mentionedModels 变化，动态更新已打开的 QuickPanel 列表状态
   useEffect(() => {
-    if (quickPanel.isVisible && quickPanel.symbol === '@') {
+    if (quickPanel.isVisible && quickPanel.symbol === QuickPanelReservedSymbol.MentionModels) {
       // 直接使用重新计算的 modelItems，因为它已经包含了最新的 isSelected 状态
       quickPanel.updateList(modelItems)
     }
@@ -306,10 +303,10 @@ const MentionModelsButton: FC<Props> = ({
   }))
 
   return (
-    <Tooltip placement="top" title={t('agents.edit.model.select.title')} mouseLeaveDelay={0} arrow>
-      <ToolbarButton type="text" onClick={handleOpenQuickPanel}>
-        <AtSign size={18} color={mentionedModels.length > 0 ? 'var(--color-primary)' : 'var(--color-icon)'} />
-      </ToolbarButton>
+    <Tooltip placement="top" title={t('assistants.presets.edit.model.select.title')} mouseLeaveDelay={0} arrow>
+      <ActionIconButton onClick={handleOpenQuickPanel} active={mentionedModels.length > 0}>
+        <AtSign size={18} />
+      </ActionIconButton>
     </Tooltip>
   )
 }

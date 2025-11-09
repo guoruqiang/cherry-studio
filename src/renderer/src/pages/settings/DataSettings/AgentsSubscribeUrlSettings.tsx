@@ -4,7 +4,7 @@ import { useSettings } from '@renderer/hooks/useSettings'
 import { useAppDispatch } from '@renderer/store'
 import { setAgentssubscribeUrl } from '@renderer/store/settings'
 import Input from 'antd/es/input/Input'
-import { FC } from 'react'
+import type { FC } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { SettingDivider, SettingGroup, SettingRow, SettingRowTitle, SettingTitle } from '..'
@@ -23,7 +23,7 @@ const AgentsSubscribeUrlSettings: FC = () => {
   return (
     <SettingGroup theme={theme}>
       <SettingTitle>
-        {t('agents.tag.agent')}
+        {t('assistants.presets.tag.agent')}
         {t('settings.tool.websearch.subscribe_add')}
       </SettingTitle>
       <SettingDivider />

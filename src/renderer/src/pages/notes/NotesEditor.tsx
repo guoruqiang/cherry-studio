@@ -1,12 +1,19 @@
+import ActionIconButton from '@renderer/components/Buttons/ActionIconButton'
+import type { CodeEditorHandles } from '@renderer/components/CodeEditor'
 import CodeEditor from '@renderer/components/CodeEditor'
 import { HSpaceBetweenStack } from '@renderer/components/Layout'
 import RichEditor from '@renderer/components/RichEditor'
-import { RichEditorRef } from '@renderer/components/RichEditor/types'
+import type { RichEditorRef } from '@renderer/components/RichEditor/types'
 import Selector from '@renderer/components/Selector'
 import { useNotesSettings } from '@renderer/hooks/useNotesSettings'
-import { EditorView } from '@renderer/types'
-import { Empty, Spin } from 'antd'
-import { FC, memo, RefObject, useCallback, useMemo, useState } from 'react'
+import { useSettings } from '@renderer/hooks/useSettings'
+import { useAppDispatch } from '@renderer/store'
+import { setEnableSpellCheck } from '@renderer/store/settings'
+import type { EditorView } from '@renderer/types'
+import { Empty, Tooltip } from 'antd'
+import { SpellCheck } from 'lucide-react'
+import type { FC, RefObject } from 'react'
+import { memo, useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import styled from 'styled-components'
 
@@ -14,15 +21,17 @@ interface NotesEditorProps {
   activeNodeId?: string
   currentContent: string
   tokenCount: number
-  isLoading: boolean
   editorRef: RefObject<RichEditorRef | null>
+  codeEditorRef: RefObject<CodeEditorHandles | null>
   onMarkdownChange: (content: string) => void
 }
 
 const NotesEditor: FC<NotesEditorProps> = memo(
-  ({ activeNodeId, currentContent, tokenCount, isLoading, onMarkdownChange, editorRef }) => {
+  ({ activeNodeId, currentContent, tokenCount, onMarkdownChange, editorRef, codeEditorRef }) => {
     const { t } = useTranslation()
+    const dispatch = useAppDispatch()
     const { settings } = useNotesSettings()
+    const { enableSpellCheck } = useSettings()
     const currentViewMode = useMemo(() => {
       if (settings.defaultViewMode === 'edit') {
         return settings.defaultEditMode
@@ -47,20 +56,13 @@ const NotesEditor: FC<NotesEditorProps> = memo(
       )
     }
 
-    if (isLoading) {
-      return (
-        <LoadingContainer>
-          <Spin tip={t('common.loading')} />
-        </LoadingContainer>
-      )
-    }
-
     return (
       <>
         <RichEditorContainer>
           {tmpViewMode === 'source' ? (
             <SourceEditorWrapper isFullWidth={settings.isFullWidth} fontSize={settings.fontSize}>
               <CodeEditor
+                ref={codeEditorRef}
                 value={currentContent}
                 language="markdown"
                 onChange={onMarkdownChange}
@@ -87,6 +89,7 @@ const NotesEditor: FC<NotesEditorProps> = memo(
               isFullWidth={settings.isFullWidth}
               fontFamily={settings.fontFamily}
               fontSize={settings.fontSize}
+              enableSpellCheck={enableSpellCheck}
             />
           )}
         </RichEditorContainer>
@@ -101,8 +104,21 @@ const NotesEditor: FC<NotesEditorProps> = memo(
                 color: 'var(--color-text-3)',
                 display: 'flex',
                 alignItems: 'center',
-                gap: 8
+                gap: 12
               }}>
+              {tmpViewMode === 'preview' && (
+                <Tooltip placement="top" title={t('notes.spell_check_tooltip')} mouseLeaveDelay={0} arrow>
+                  <ActionIconButton
+                    active={enableSpellCheck}
+                    onClick={() => {
+                      const newValue = !enableSpellCheck
+                      dispatch(setEnableSpellCheck(newValue))
+                      window.api.setEnableSpellCheck(newValue)
+                    }}>
+                    <SpellCheck size={18} />
+                  </ActionIconButton>
+                </Tooltip>
+              )}
               <Selector
                 value={tmpViewMode as EditorView}
                 onChange={(value: EditorView) => setTmpViewMode(value)}
@@ -121,14 +137,6 @@ const NotesEditor: FC<NotesEditorProps> = memo(
 )
 
 NotesEditor.displayName = 'NotesEditor'
-
-const LoadingContainer = styled.div`
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  width: 100%;
-  height: 100%;
-`
 
 const EmptyContainer = styled.div`
   display: flex;

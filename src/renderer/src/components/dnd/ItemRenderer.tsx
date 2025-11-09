@@ -1,10 +1,11 @@
-import { DraggableSyntheticListeners } from '@dnd-kit/core'
-import { CSS, Transform } from '@dnd-kit/utilities'
+import type { DraggableSyntheticListeners } from '@dnd-kit/core'
+import type { Transform } from '@dnd-kit/utilities'
+import { CSS } from '@dnd-kit/utilities'
 import { classNames } from '@renderer/utils'
 import React, { useEffect } from 'react'
 import styled from 'styled-components'
 
-import { RenderItemType } from './types'
+import type { RenderItemType } from './types'
 
 interface ItemRendererProps<T> {
   ref?: React.Ref<HTMLDivElement>
@@ -17,6 +18,7 @@ interface ItemRendererProps<T> {
   transform?: Transform | null
   transition?: string | null
   listeners?: DraggableSyntheticListeners
+  itemStyle?: React.CSSProperties
 }
 
 export function ItemRenderer<T>({
@@ -30,6 +32,7 @@ export function ItemRenderer<T>({
   transform,
   transition,
   listeners,
+  itemStyle,
   ...props
 }: ItemRendererProps<T>) {
   useEffect(() => {
@@ -44,7 +47,7 @@ export function ItemRenderer<T>({
     }
   }, [dragOverlay])
 
-  const wrapperStyle = {
+  const style = {
     transition,
     transform: CSS.Transform.toString(transform ?? null)
   } as React.CSSProperties
@@ -54,7 +57,7 @@ export function ItemRenderer<T>({
       ref={ref}
       data-index={index}
       className={classNames({ dragOverlay: dragOverlay })}
-      style={{ ...wrapperStyle }}>
+      style={{ ...style, ...itemStyle }}>
       <DraggableItem
         className={classNames({ dragging: dragging, dragOverlay: dragOverlay, ghost: ghost })}
         {...listeners}

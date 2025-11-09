@@ -9,6 +9,7 @@ electronLanguages:
   - zh_CN # for macOS
   - zh_TW # for macOS
   - en # for macOS
+  - de
 directories:
   buildResources: build
 
@@ -17,52 +18,60 @@ protocols:
     schemes:
       - cherrystudio
 files:
-  - '**/*'
-  - '!**/{.vscode,.yarn,.yarn-lock,.github,.cursorrules,.prettierrc}'
-  - '!electron.vite.config.{js,ts,mjs,cjs}}'
-  - '!**/{.eslintignore,.eslintrc.js,.eslintrc.json,.eslintcache,root.eslint.config.js,eslint.config.js,.eslintrc.cjs,.prettierignore,.prettierrc.yaml,eslint.config.mjs,dev-app-update.yml,CHANGELOG.md,README.md}'
-  - '!**/{.env,.env.*,.npmrc,pnpm-lock.yaml}'
-  - '!**/{tsconfig.json,tsconfig.tsbuildinfo,tsconfig.node.json,tsconfig.web.json}'
-  - '!**/{.editorconfig,.jekyll-metadata}'
-  - '!src'
-  - '!scripts'
-  - '!local'
-  - '!docs'
-  - '!packages'
-  - '!.swc'
-  - '!.bin'
-  - '!._*'
-  - '!*.log'
-  - '!stats.html'
-  - '!*.md'
-  - '!**/*.{iml,o,hprof,orig,pyc,pyo,rbc,swp,csproj,sln,xproj}'
-  - '!**/*.{map,ts,tsx,jsx,less,scss,sass,css.d.ts,d.cts,d.mts,md,markdown,yaml,yml}'
-  - '!**/{test,tests,__tests__,powered-test,coverage}/**'
-  - '!**/{example,examples}/**'
-  - '!**/*.{spec,test}.{js,jsx,ts,tsx}'
-  - '!**/*.min.*.map'
-  - '!**/*.d.ts'
-  - '!**/dist/es6/**'
-  - '!**/dist/demo/**'
-  - '!**/amd/**'
-  - '!**/{.DS_Store,Thumbs.db,thumbs.db,__pycache__}'
-  - '!**/{LICENSE,license,LICENSE.*,*.LICENSE.txt,NOTICE.txt,README.md,readme.md,CHANGELOG.md}'
-  - '!node_modules/rollup-plugin-visualizer'
-  - '!node_modules/js-tiktoken'
-  - '!node_modules/@tavily/core/node_modules/js-tiktoken'
-  - '!node_modules/pdf-parse/lib/pdf.js/{v1.9.426,v1.10.88,v2.0.550}'
-  - '!node_modules/mammoth/{mammoth.browser.js,mammoth.browser.min.js}'
-  - '!node_modules/selection-hook/prebuilds/**/*' # we rebuild .node, don't use prebuilds
-  - '!node_modules/selection-hook/node_modules' # we don't need what in the node_modules dir
-  - '!node_modules/selection-hook/src' # we don't need source files
-  - '!node_modules/tesseract.js-core/{tesseract-core.js,tesseract-core.wasm,tesseract-core.wasm.js}' # we don't need source files
-  - '!node_modules/tesseract.js-core/{tesseract-core-lstm.js,tesseract-core-lstm.wasm,tesseract-core-lstm.wasm.js}' # we don't need source files
-  - '!node_modules/tesseract.js-core/{tesseract-core-simd-lstm.js,tesseract-core-simd-lstm.wasm,tesseract-core-simd-lstm.wasm.js}' # we don't need source files
-  - '!**/*.{h,iobj,ipdb,tlog,recipe,vcxproj,vcxproj.filters,Makefile,*.Makefile}' # filter .node build files
+  - "**/*"
+  - "!**/{.vscode,.yarn,.yarn-lock,.github,.cursorrules,.prettierrc}"
+  - "!electron.vite.config.{js,ts,mjs,cjs}}"
+  - "!.*"
+  - "!components.json"
+  - "!**/{.eslintignore,.eslintrc.js,.eslintrc.json,.eslintcache,root.eslint.config.js,eslint.config.js,.eslintrc.cjs,.prettierignore,.prettierrc.yaml,eslint.config.mjs,dev-app-update.yml,CHANGELOG.md,README.md,biome.jsonc}"
+  - "!**/{.env,.env.*,.npmrc,pnpm-lock.yaml}"
+  - "!**/{tsconfig.json,tsconfig.tsbuildinfo,tsconfig.node.json,tsconfig.web.json}"
+  - "!**/{.editorconfig,.jekyll-metadata}"
+  - "!src"
+  - "!scripts"
+  - "!local"
+  - "!docs"
+  - "!packages"
+  - "!.swc"
+  - "!.bin"
+  - "!._*"
+  - "!*.log"
+  - "!stats.html"
+  - "!*.md"
+  - "!**/*.{iml,o,hprof,orig,pyc,pyo,rbc,swp,csproj,sln,xproj}"
+  - "!**/*.{map,ts,tsx,jsx,less,scss,sass,css.d.ts,d.cts,d.mts,md,markdown,yaml,yml}"
+  - "!**/{test,tests,__tests__,powered-test,coverage}/**"
+  - "!**/{example,examples}/**"
+  - "!**/*.{spec,test}.{js,jsx,ts,tsx}"
+  - "!**/*.min.*.map"
+  - "!**/*.d.ts"
+  - "!**/dist/es6/**"
+  - "!**/dist/demo/**"
+  - "!**/amd/**"
+  - "!**/{.DS_Store,Thumbs.db,thumbs.db,__pycache__}"
+  - "!**/{LICENSE,license,LICENSE.*,*.LICENSE.txt,NOTICE.txt,README.md,readme.md,CHANGELOG.md}"
+  - "!node_modules/rollup-plugin-visualizer"
+  - "!node_modules/js-tiktoken"
+  - "!node_modules/@tavily/core/node_modules/js-tiktoken"
+  - "!node_modules/pdf-parse/lib/pdf.js/{v1.9.426,v1.10.88,v2.0.550}"
+  - "!node_modules/mammoth/{mammoth.browser.js,mammoth.browser.min.js}"
+  - "!node_modules/selection-hook/prebuilds/**/*" # we rebuild .node, don't use prebuilds
+  - "!node_modules/selection-hook/node_modules" # we don't need what in the node_modules dir
+  - "!node_modules/selection-hook/src" # we don't need source files
+  - "!node_modules/tesseract.js-core/{tesseract-core.js,tesseract-core.wasm,tesseract-core.wasm.js}" # we don't need source files
+  - "!node_modules/tesseract.js-core/{tesseract-core-lstm.js,tesseract-core-lstm.wasm,tesseract-core-lstm.wasm.js}" # we don't need source files
+  - "!node_modules/tesseract.js-core/{tesseract-core-simd-lstm.js,tesseract-core-simd-lstm.wasm,tesseract-core-simd-lstm.wasm.js}" # we don't need source files
+  - "!**/*.{h,iobj,ipdb,tlog,recipe,vcxproj,vcxproj.filters,Makefile,*.Makefile}" # filter .node build files
 asarUnpack:
   - resources/**
-  - '**/*.{metal,exp,lib}'
-  - 'node_modules/@img/sharp-libvips-*/**'
+  - "**/*.{metal,exp,lib}"
+  - "node_modules/@img/sharp-libvips-*/**"
+
+# copy from node_modules/claude-code-plugins/plugins to resources/data/claude-code-pluginso
+extraResources:
+  - from: "./node_modules/claude-code-plugins/plugins/"
+    to: "claude-code-plugins"
+
 win:
   executableName: Cherry Studio
   artifactName: ${productName}-${version}-${arch}-setup.${ext}
@@ -89,7 +98,7 @@ mac:
   notarize: false
   entitlementsInherit: build/entitlements.mac.plist
   artifactName: ${productName}-${version}-${arch}.${ext}
-  minimumSystemVersion: '20.1.0' # 最低支持 macOS 11.0
+  minimumSystemVersion: "20.1.0" # 最低支持 macOS 11.0
   extendInfo:
     - NSCameraUsageDescription: Application requests access to the device's camera.
     - NSMicrophoneUsageDescription: Application requests access to the device's microphone.
@@ -101,9 +110,14 @@ mac:
 linux:
   artifactName: ${productName}-${version}-${arch}.${ext}
   target:
-    - target: AppImage
+    # Skip AppImage on Windows due to symlink permission issues
+    # Use WSL or Linux system to build AppImage
     - target: deb
+      arch:
+        - x64
     - target: rpm
+      arch:
+        - x64
   maintainer: electronjs.org
   category: Utility
   desktop:
@@ -114,7 +128,7 @@ linux:
 rpm:
   # Workaround for electron build issue on rpm package:
   # https://github.com/electron/forge/issues/3594
-  fpm: ['--rpm-rpmbuild-define=_build_id_links none']
+  fpm: ["--rpm-rpmbuild-define=_build_id_links none"]
 publish:
   provider: generic
   url: https://releases.cherry-ai.com
@@ -126,25 +140,60 @@ afterSign: scripts/notarize.js
 artifactBuildCompleted: scripts/artifact-build-completed.js
 releaseInfo:
   releaseNotes: |
-    ✨ 新功能：
-    - 重构知识库模块，提升文档处理能力和搜索性能
-    - 新增 PaddleOCR 支持，增强文档识别能力
-    - 支持自定义窗口控制按钮样式
-    - 新增 AI SDK 包，扩展 AI 能力集成
-    - 支持标签页拖拽重排序功能
-    - 增强笔记编辑器的同步和日志功能
+    <!--LANG:en-->
+    What's New in v1.7.0-beta.4
 
-    🔧 性能优化：
-    - 优化 MCP 服务的日志记录和错误处理
-    - 改进 WebView 服务的 User-Agent 处理
-    - 优化迷你应用的标题栏样式和状态栏适配
-    - 重构依赖管理，清理和优化 package.json
+    Major Changes:
+    - UI Framework Upgrade: Improved performance and user experience with new design system
+    - App Menu i18n: Menu now supports multiple languages and syncs with app language settings
 
-    🐛 问题修复：
-    - 修复输入栏无限状态更新循环问题
-    - 修复窗口控制提示框的鼠标悬停延迟
-    - 修复翻译输入框粘贴多内容源的处理
-    - 修复导航服务初始化时序问题
-    - 修复 MCP 通过 JSON 添加时的参数转换
-    - 修复模型作用域服务器同步时的 URL 格式
-    - 标准化工具提示图标样式
+    New Features:
+    - AWS Bedrock API Key: Support Bedrock API key authentication with Extended Thinking (reasoning) capability
+    - SophNet Provider: Added support for SophNet LLM provider
+    - Auto Session Rename: Agent sessions automatically rename based on conversation topics
+    - TopP Parameter: Added TopP parameter support for more precise model control
+    - Reasoning Effort Control: Quick access to reasoning effort settings in input bar
+
+    Improvements:
+    - Topics & Sessions: Enhanced UI with better styling and smoother interactions
+    - Quick Panel: Improved option visibility and control
+    - Painting Models: Smarter model initialization with better defaults
+    - System Shutdown: Better handling of shutdown events to prevent data loss
+    - Smaller Package Size: Optimized build configuration for faster downloads
+
+    Bug Fixes:
+    - Fixed Perplexity provider support and API host formatting
+    - Fixed CherryAI provider support and API host formatting
+    - Fixed i18n translations for painting image size options
+    - Fixed agent session message token usage tracking
+    - Fixed prompt stream handling on completion or error
+    - Fixed message API initialization issues
+
+    <!--LANG:zh-CN-->
+    v1.7.0-beta.4 新特性
+
+    重大变更:
+    - UI 框架升级：采用新设计系统，提升性能和用户体验
+    - 应用菜单国际化：菜单支持多语言，并自动同步应用语言设置
+
+    新功能:
+    - AWS Bedrock API 密钥：支持 Bedrock API 密钥身份验证，并支持扩展思考（推理）能力
+    - SophNet 提供商：添加 SophNet LLM 提供商支持
+    - 自动会话重命名：Agent 会话根据对话主题自动重命名
+    - TopP 参数：添加 TopP 参数支持，更精确控制模型输出
+
+    改进:
+    - 主题和会话：增强 UI，改进样式和交互体验
+    - 快速面板：改进选项可见性和控制
+    - 绘图模型：更智能的模型初始化和更好的默认值
+    - 系统关机：更好地处理关机事件，防止数据丢失
+    - 更小的安装包：优化构建配置，下载更快
+
+    问题修复:
+    - 修复 Perplexity 提供商支持和 API 主机格式化
+    - 修复 CherryAI 提供商支持和 API 主机格式化
+    - 修复绘图图像大小选项的 i18n 翻译
+    - 修复 Agent 会话消息的 token 使用量跟踪
+    - 修复完成或错误时的提示流处理
+    - 修复消息 API 初始化问题
+    <!--LANG:END-->

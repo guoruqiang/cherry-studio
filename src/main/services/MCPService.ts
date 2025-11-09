@@ -7,9 +7,11 @@ import { createInMemoryMCPServer } from '@main/mcpServers/factory'
 import { makeSureDirExists, removeEnvProxy } from '@main/utils'
 import { buildFunctionCallToolName } from '@main/utils/mcp'
 import { getBinaryName, getBinaryPath } from '@main/utils/process'
+import getLoginShellEnvironment from '@main/utils/shell-env'
 import { TraceMethod, withSpanFunc } from '@mcp-trace/trace-core'
 import { Client } from '@modelcontextprotocol/sdk/client/index.js'
-import { SSEClientTransport, SSEClientTransportOptions } from '@modelcontextprotocol/sdk/client/sse.js'
+import type { SSEClientTransportOptions } from '@modelcontextprotocol/sdk/client/sse.js'
+import { SSEClientTransport } from '@modelcontextprotocol/sdk/client/sse.js'
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js'
 import {
   StreamableHTTPClientTransport,
@@ -28,7 +30,8 @@ import {
   ToolListChangedNotificationSchema
 } from '@modelcontextprotocol/sdk/types.js'
 import { nanoid } from '@reduxjs/toolkit'
-import { MCPProgressEvent } from '@shared/config/types'
+import { HOME_CHERRY_DIR } from '@shared/config/constant'
+import type { MCPProgressEvent } from '@shared/config/types'
 import { IpcChannel } from '@shared/IpcChannel'
 import { defaultAppHeaders } from '@shared/utils'
 import {
@@ -43,14 +46,12 @@ import {
 } from '@types'
 import { app, net } from 'electron'
 import { EventEmitter } from 'events'
-import { memoize } from 'lodash'
 import { v4 as uuidv4 } from 'uuid'
 
 import { CacheService } from './CacheService'
 import DxtService from './DxtService'
 import { CallBackServer } from './mcp/oauth/callback'
 import { McpOAuthClientProvider } from './mcp/oauth/provider'
-import getLoginShellEnvironment from './mcp/shell-env'
 import { windowService } from './WindowService'
 
 // Generic type for caching wrapped functions
@@ -235,7 +236,7 @@ class McpService {
             try {
               await inMemoryServer.connect(serverTransport)
               getServerLogger(server).debug(`In-memory server started`)
-            } catch (error: Error | any) {
+            } catch (error: any) {
               getServerLogger(server).error(`Error starting in-memory server`, error as Error)
               throw new Error(`Failed to start in-memory server: ${error.message}`)
             }
@@ -335,7 +336,7 @@ class McpService {
 
             getServerLogger(server).debug(`Starting server`, { command: cmd, args })
             // Logger.info(`[MCP] Environment variables for server:`, server.env)
-            const loginShellEnv = await this.getLoginShellEnv()
+            const loginShellEnv = await getLoginShellEnvironment()
 
             // Bun not support proxy https://github.com/oven-sh/bun/issues/16812
             if (cmd.includes('bun')) {
@@ -419,7 +420,7 @@ class McpService {
           const transport = await initTransport()
           try {
             await client.connect(transport)
-          } catch (error: Error | any) {
+          } catch (error: any) {
             if (
               error instanceof Error &&
               (error.name === 'UnauthorizedError' || error.message.includes('Unauthorized'))
@@ -715,7 +716,7 @@ class McpService {
   }
 
   public async getInstallInfo() {
-    const dir = path.join(os.homedir(), '.cherrystudio', 'bin')
+    const dir = path.join(os.homedir(), HOME_CHERRY_DIR, 'bin')
     const uvName = await getBinaryName('uv')
     const bunName = await getBinaryName('bun')
     const uvPath = path.join(dir, uvName)
@@ -852,7 +853,7 @@ class McpService {
       return {
         contents: contents
       }
-    } catch (error: Error | any) {
+    } catch (error: any) {
       getServerLogger(server, { uri }).error(`Failed to get resource`, error as Error)
       throw new Error(`Failed to get resource ${uri} from server: ${server.name}: ${error.message}`)
     }
@@ -877,20 +878,6 @@ class McpService {
     )
     return await cachedGetResource(server, uri)
   }
-
-  private getLoginShellEnv = memoize(async (): Promise<Record<string, string>> => {
-    try {
-      const loginEnv = await getLoginShellEnvironment()
-      const pathSeparator = process.platform === 'win32' ? ';' : ':'
-      const cherryBinPath = path.join(os.homedir(), '.cherrystudio', 'bin')
-      loginEnv.PATH = `${loginEnv.PATH}${pathSeparator}${cherryBinPath}`
-      logger.debug('Successfully fetched login shell environment variables:')
-      return loginEnv
-    } catch (error) {
-      logger.error('Failed to fetch login shell environment variables:', error as Error)
-      return {}
-    }
-  })
 
   // 实现 abortTool 方法
   public async abortTool(_: Electron.IpcMainInvokeEvent, callId: string) {

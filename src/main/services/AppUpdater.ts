@@ -7,6 +7,7 @@ import { app } from 'electron'
 import { AppUpdater as _AppUpdater, autoUpdater, Logger, NsisUpdater, UpdateCheckResult } from 'electron-updater'
 import path from 'path'
 
+import { configManager } from './ConfigManager'
 import { windowService } from './WindowService'
 
 const logger = loggerService.withContext('AppUpdater')
@@ -24,7 +25,8 @@ export default class AppUpdater {
     autoUpdater.autoInstallOnAppQuit = false
     autoUpdater.requestHeaders = {
       ...autoUpdater.requestHeaders,
-      'User-Agent': generateUserAgent()
+      'User-Agent': generateUserAgent(),
+      'X-Client-Id': configManager.getClientId()
     }
 
     autoUpdater.on('error', (error) => {
@@ -87,6 +89,4 @@ export default class AppUpdater {
       updateInfo: null
     }
   }
-
-
 }

@@ -1,8 +1,10 @@
 import { CheckOutlined } from '@ant-design/icons'
-import { NotesSortType } from '@renderer/types/note'
-import { Dropdown, Input, MenuProps, Tooltip } from 'antd'
+import type { NotesSortType } from '@renderer/types/note'
+import type { MenuProps } from 'antd'
+import { Dropdown, Input, Tooltip } from 'antd'
 import { ArrowLeft, ArrowUpNarrowWide, FilePlus2, FolderPlus, Search, Star } from 'lucide-react'
-import { FC, useCallback } from 'react'
+import type { FC } from 'react'
+import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import styled from 'styled-components'
 
@@ -87,7 +89,7 @@ const NotesSidebarHeader: FC<NotesSidebarHeaderProps> = ({
                 onClick: handleSortMenuClick
               }}
               trigger={['click']}>
-              <Tooltip title={t('agents.sorting.title')} mouseEnterDelay={0.8}>
+              <Tooltip title={t('assistants.presets.sorting.title')} mouseEnterDelay={0.8}>
                 <ActionButton>
                   <ArrowUpNarrowWide size={18} />
                 </ActionButton>

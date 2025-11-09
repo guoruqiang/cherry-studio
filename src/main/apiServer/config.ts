@@ -1,4 +1,4 @@
-import { ApiServerConfig } from '@types'
+import type { ApiServerConfig } from '@types'
 import { v4 as uuidv4 } from 'uuid'
 
 import { loggerService } from '../services/LoggerService'
@@ -36,7 +36,7 @@ class ConfigManager {
       }
       return this._config
     } catch (error: any) {
-      logger.warn('Failed to load config from Redux, using defaults:', error)
+      logger.warn('Failed to load config from Redux, using defaults', { error })
       this._config = {
         enabled: false,
         port: defaultPort,

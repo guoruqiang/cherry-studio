@@ -6,7 +6,7 @@ import {
   isVisionModel,
   isWebSearchModel
 } from '@renderer/config/models'
-import { Model } from '@renderer/types'
+import type { Model } from '@renderer/types'
 import { beforeEach, describe, expect, test, vi } from 'vitest'
 
 // Suggested test cases
@@ -16,7 +16,16 @@ describe('Qwen Model Detection', () => {
       initialState: {}
     }))
     vi.mock('@renderer/services/AssistantService', () => ({
-      getProviderByModel: vi.fn().mockReturnValue({ id: 'cherryin' })
+      getProviderByModel: vi.fn().mockReturnValue({ id: 'cherryai' })
+    }))
+    vi.mock('@renderer/store', () => ({
+      default: {
+        getState: () => ({
+          llm: {
+            settings: {}
+          }
+        })
+      }
     }))
   })
   test('isQwenReasoningModel', () => {
@@ -52,7 +61,7 @@ describe('Vision Model Detection', () => {
       initialState: {}
     }))
     vi.mock('@renderer/services/AssistantService', () => ({
-      getProviderByModel: vi.fn().mockReturnValue({ id: 'cherryin' })
+      getProviderByModel: vi.fn().mockReturnValue({ id: 'cherryai' })
     }))
   })
   test('isVisionModel', () => {
@@ -81,7 +90,7 @@ describe('Web Search Model Detection', () => {
       initialState: {}
     }))
     vi.mock('@renderer/services/AssistantService', () => ({
-      getProviderByModel: vi.fn().mockReturnValue({ id: 'cherryin' })
+      getProviderByModel: vi.fn().mockReturnValue({ id: 'cherryai' })
     }))
   })
   test('isWebSearchModel', () => {

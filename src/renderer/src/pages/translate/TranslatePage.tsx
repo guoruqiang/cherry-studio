@@ -20,12 +20,11 @@ import { saveTranslateHistory, translateText } from '@renderer/services/Translat
 import { useAppDispatch, useAppSelector } from '@renderer/store'
 import { setTranslateAbortKey, setTranslating as setTranslatingAction } from '@renderer/store/runtime'
 import { setTranslatedContent as setTranslatedContentAction, setTranslateInput } from '@renderer/store/translate'
+import type { FileMetadata, SupportedOcrFile } from '@renderer/types'
 import {
   type AutoDetectionMethod,
-  FileMetadata,
   isSupportedOcrFile,
   type Model,
-  SupportedOcrFile,
   type TranslateHistory,
   type TranslateLanguage
 } from '@renderer/types'
@@ -42,10 +41,12 @@ import {
 } from '@renderer/utils/translate'
 import { imageExts, MB, textExts } from '@shared/config/constant'
 import { Button, Flex, FloatButton, Popover, Tooltip, Typography } from 'antd'
-import TextArea, { TextAreaRef } from 'antd/es/input/TextArea'
+import type { TextAreaRef } from 'antd/es/input/TextArea'
+import TextArea from 'antd/es/input/TextArea'
 import { isEmpty, throttle } from 'lodash'
 import { Check, CirclePause, FolderClock, Settings2, UploadIcon } from 'lucide-react'
-import { FC, useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import type { FC } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import styled from 'styled-components'
 
@@ -134,15 +135,22 @@ const TranslatePage: FC = () => {
   )
 
   // 控制复制行为
+  const copy = useCallback(
+    async (text: string) => {
+      await navigator.clipboard.writeText(text)
+      setCopied(true)
+    },
+    [setCopied]
+  )
+
   const onCopy = useCallback(async () => {
     try {
-      await navigator.clipboard.writeText(translatedContent)
-      setCopied(true)
+      await copy(translatedContent)
     } catch (error) {
       logger.error('Failed to copy text to clipboard:', error as Error)
       window.toast.error(t('common.copy_failed'))
     }
-  }, [setCopied, t, translatedContent])
+  }, [copy, t, translatedContent])
 
   /**
    * 翻译文本并保存历史记录，包含完整的异常处理，不会抛出异常
@@ -183,7 +191,7 @@ const TranslatePage: FC = () => {
           setTimeoutTimer(
             'auto-copy',
             async () => {
-              await onCopy()
+              await copy(translated)
             },
             100
           )
@@ -200,7 +208,7 @@ const TranslatePage: FC = () => {
         window.toast.error(t('translate.error.unknown') + ': ' + formatErrorMessage(e))
       }
     },
-    [autoCopy, dispatch, onCopy, setTimeoutTimer, setTranslatedContent, setTranslating, t, translating]
+    [autoCopy, copy, dispatch, setTimeoutTimer, setTranslatedContent, setTranslating, t, translating]
   )
 
   // 控制翻译按钮是否可用
@@ -846,7 +854,8 @@ const ContentContainer = styled.div<{ $historyDrawerVisible: boolean }>`
 `
 
 const AreaContainer = styled.div`
-  display: flex;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
   flex: 1;
   gap: 8px;
 `
@@ -917,6 +926,11 @@ const OutputContainer = styled.div`
   border-radius: 10px;
   padding: 10px 5px;
   height: calc(100vh - var(--navbar-height) - 70px);
+  overflow: hidden;
+
+  & > div > .markdown > pre {
+    background-color: var(--color-background-mute) !important;
+  }
 
   &:hover .copy-button {
     opacity: 1;

@@ -6,7 +6,7 @@ import { useMessageOperations } from '@renderer/hooks/useMessageOperations'
 import { useSettings } from '@renderer/hooks/useSettings'
 import { useTimer } from '@renderer/hooks/useTimer'
 import { EVENT_NAMES, EventEmitter } from '@renderer/services/EventService'
-import { MultiModelMessageStyle } from '@renderer/store/settings'
+import type { MultiModelMessageStyle } from '@renderer/store/settings'
 import type { Topic } from '@renderer/types'
 import type { Message } from '@renderer/types/newMessage'
 import { classNames } from '@renderer/utils'
@@ -339,6 +339,7 @@ const GridContainer = styled(Scrollbar)<{ $count: number; $gridColumns: number }
   display: grid;
   overflow-y: visible;
   gap: 16px;
+
   &.horizontal {
     padding-bottom: 4px;
     grid-template-columns: repeat(${({ $count }) => $count}, minmax(420px, 1fr));
@@ -405,6 +406,7 @@ const MessageWrapper = styled.div<MessageWrapperProps>`
     }
   }
   &.grid {
+    display: block;
     height: 300px;
     overflow-y: hidden;
     border: 0.5px solid var(--color-border);

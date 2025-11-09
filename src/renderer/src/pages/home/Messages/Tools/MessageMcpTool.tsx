@@ -4,10 +4,11 @@ import { useCodeStyle } from '@renderer/context/CodeStyleProvider'
 import { useMCPServers } from '@renderer/hooks/useMCPServers'
 import { useSettings } from '@renderer/hooks/useSettings'
 import { useTimer } from '@renderer/hooks/useTimer'
+import type { MCPToolResponse } from '@renderer/types'
 import type { ToolMessageBlock } from '@renderer/types/newMessage'
 import { isToolAutoApproved } from '@renderer/utils/mcp-tools'
 import { cancelToolAction, confirmToolAction } from '@renderer/utils/userConfirmation'
-import { MCPProgressEvent } from '@shared/config/types'
+import type { MCPProgressEvent } from '@shared/config/types'
 import { IpcChannel } from '@shared/IpcChannel'
 import {
   Button,
@@ -34,7 +35,8 @@ import {
   TriangleAlert,
   X
 } from 'lucide-react'
-import { FC, memo, useEffect, useMemo, useRef, useState } from 'react'
+import type { FC } from 'react'
+import { memo, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import styled from 'styled-components'
 
@@ -57,9 +59,9 @@ const MessageMcpTool: FC<Props> = ({ block }) => {
   const [progress, setProgress] = useState<number>(0)
   const { setTimeoutTimer } = useTimer()
 
-  const toolResponse = block.metadata?.rawMcpToolResponse
+  const toolResponse = block.metadata?.rawMcpToolResponse as MCPToolResponse
 
-  const { id, tool, status, response } = toolResponse!
+  const { id, tool, status, response } = toolResponse as MCPToolResponse
   const isPending = status === 'pending'
   const isDone = status === 'done'
   const isError = status === 'error'

@@ -1,8 +1,6 @@
 import '@renderer/databases'
 
-import { HeroUIProvider } from '@heroui/react'
 import { ErrorBoundary } from '@renderer/components/ErrorBoundary'
-import { ToastPortal } from '@renderer/components/ToastPortal'
 import { getToastUtilities } from '@renderer/components/TopView/toast'
 import { useSettings } from '@renderer/hooks/useSettings'
 import store, { persistor } from '@renderer/store'
@@ -43,20 +41,17 @@ function MiniWindow(): React.ReactElement {
 
   return (
     <Provider store={store}>
-      <HeroUIProvider>
-        <ThemeProvider>
-          <AntdProvider>
-            <CodeStyleProvider>
-              <PersistGate loading={null} persistor={persistor}>
-                <ErrorBoundary>
-                  <MiniWindowContent />
-                </ErrorBoundary>
-              </PersistGate>
-            </CodeStyleProvider>
-          </AntdProvider>
-        </ThemeProvider>
-        <ToastPortal />
-      </HeroUIProvider>
+      <ThemeProvider>
+        <AntdProvider>
+          <CodeStyleProvider>
+            <PersistGate loading={null} persistor={persistor}>
+              <ErrorBoundary>
+                <MiniWindowContent />
+              </ErrorBoundary>
+            </PersistGate>
+          </CodeStyleProvider>
+        </AntdProvider>
+      </ThemeProvider>
     </Provider>
   )
 }

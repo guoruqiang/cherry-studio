@@ -4,14 +4,11 @@ import { HStack } from '@renderer/components/Layout'
 import { APP_NAME, AppLogo } from '@renderer/config/env'
 import { useTheme } from '@renderer/context/ThemeProvider'
 import { useRuntime } from '@renderer/hooks/useRuntime'
-import { useSettings } from '@renderer/hooks/useSettings'
-import { useAppDispatch } from '@renderer/store'
-import { setUpdateState } from '@renderer/store/runtime'
-import { runAsyncFunction } from '@renderer/utils'
-import { UpgradeChannel } from '@shared/config/constant'
-import { Avatar, Button, Progress, Radio, Row, Switch, Tag, Tooltip } from 'antd'
+import { Avatar, Button, Progress, Row, Tag } from 'antd'
+import { Play } from 'lucide-react'
 import { debounce } from 'lodash'
-import { FC, useEffect, useState } from 'react'
+import type { FC } from 'react'
+import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Markdown from 'react-markdown'
 import { Link } from 'react-router-dom'
@@ -23,9 +20,7 @@ const AboutSettings: FC = () => {
   const [version, setVersion] = useState('')
   const [isPortable, setIsPortable] = useState(false)
   const { t } = useTranslation()
-  const { testPlan, testChannel, setTestChannel } = useSettings()
   const { theme } = useTheme()
-  const dispatch = useAppDispatch()
   const { update } = useRuntime()
 
   const onCheckUpdate = debounce(
@@ -45,59 +40,13 @@ const AboutSettings: FC = () => {
     window.api.openWebsite(url)
   }
 
-  const currentChannelByVersion =
-    [
-      { pattern: `-${UpgradeChannel.BETA}.`, channel: UpgradeChannel.BETA },
-      { pattern: `-${UpgradeChannel.RC}.`, channel: UpgradeChannel.RC }
-    ].find(({ pattern }) => version.includes(pattern))?.channel || UpgradeChannel.LATEST
-
-  const handleTestChannelChange = async (value: UpgradeChannel) => {
-    if (testPlan && currentChannelByVersion !== UpgradeChannel.LATEST && value !== currentChannelByVersion) {
-      window.toast.warning(t('settings.general.test_plan.version_channel_not_match'))
-    }
-    setTestChannel(value)
-    // Clear update info when switching upgrade channel
-    dispatch(
-      setUpdateState({
-        available: false,
-        info: null,
-        downloaded: false,
-        checking: false,
-        downloading: false,
-        downloadProgress: 0
-      })
-    )
-  }
-
-  // Get available test version options based on current version
-  const getAvailableTestChannels = () => {
-    return [
-      {
-        tooltip: t('settings.general.test_plan.rc_version_tooltip'),
-        label: t('settings.general.test_plan.rc_version'),
-        value: UpgradeChannel.RC
-      },
-      {
-        tooltip: t('settings.general.test_plan.beta_version_tooltip'),
-        label: t('settings.general.test_plan.beta_version'),
-        value: UpgradeChannel.BETA
-      }
-    ]
-  }
-
-  const getTestChannel = () => {
-    if (testChannel === UpgradeChannel.LATEST) {
-      return UpgradeChannel.RC
-    }
-    return testChannel
-  }
-
   useEffect(() => {
-    runAsyncFunction(async () => {
+    const loadAppInfo = async () => {
       const appInfo = await window.api.getAppInfo()
       setVersion(appInfo.version)
       setIsPortable(appInfo.isPortable)
-    })
+    }
+    loadAppInfo()
   }, [])
 
   return (
@@ -106,7 +55,7 @@ const AboutSettings: FC = () => {
         <SettingTitle>
           {t('settings.about.title')}
           <HStack alignItems="center">
-            <Link to="https://github.com/CherryHQ/cherry-studio">
+            <Link to="https://github.com/guoruqiang/cherry-studio">
               <GithubOutlined style={{ marginRight: 4, color: 'var(--color-text)', fontSize: 20 }} />
             </Link>
           </HStack>
@@ -114,7 +63,7 @@ const AboutSettings: FC = () => {
         <SettingDivider />
         <AboutHeader>
           <Row align="middle">
-            <AvatarWrapper onClick={() => onOpenWebsite('https://github.com/CherryHQ/cherry-studio')}>
+            <AvatarWrapper onClick={() => onOpenWebsite('https://github.com/guoruqiang/cherry-studio')}>
               {update.downloadProgress > 0 && (
                 <ProgressCircle
                   type="circle"
@@ -151,41 +100,19 @@ const AboutSettings: FC = () => {
             </CheckUpdateButton>
           )}
         </AboutHeader>
-        {!isPortable && (
-          <>
-            <SettingDivider />
-            <SettingRow>
-              <SettingRowTitle>{t('settings.general.auto_check_update.title')}</SettingRowTitle>
-              <Switch value={false} disabled={true} />
-            </SettingRow>
-            <SettingDivider />
-            {/* <SettingRow>
-              <SettingRowTitle>{t('settings.general.test_plan.title')}</SettingRowTitle>
-              <Tooltip title={t('settings.general.test_plan.tooltip')} trigger={['hover', 'focus']}>
-                <Switch value={testPlan} onChange={(v) => handleSetTestPlan(v)} />
-              </Tooltip>
-            </SettingRow> */}
-            {testPlan && (
-              <>
-                <SettingDivider />
-                <SettingRow>
-                  <SettingRowTitle>{t('settings.general.test_plan.version_options')}</SettingRowTitle>
-                  <Radio.Group
-                    size="small"
-                    buttonStyle="solid"
-                    value={getTestChannel()}
-                    onChange={(e) => handleTestChannelChange(e.target.value)}>
-                    {getAvailableTestChannels().map((option) => (
-                      <Tooltip key={option.value} title={option.tooltip}>
-                        <Radio.Button value={option.value}>{option.label}</Radio.Button>
-                      </Tooltip>
-                    ))}
-                  </Radio.Group>
-                </SettingRow>
-              </>
-            )}
-          </>
-        )}
+      </SettingGroup>
+      <SettingGroup theme={theme}>
+        <SettingTitle>{t('settings.about.video_tutorial.title')}</SettingTitle>
+        <SettingDivider />
+        <VideoTutorialWrapper>
+          <VideoTutorialDescription>{t('settings.about.video_tutorial.description')}</VideoTutorialDescription>
+          <VideoTutorialButton
+            type="primary"
+            icon={<Play size={16} />}
+            onClick={() => onOpenWebsite('https://www.douyin.com/user/self?from_tab_name=main&modal_id=7569992777850992826')}>
+            {t('settings.about.video_tutorial.button')}
+          </VideoTutorialButton>
+        </VideoTutorialWrapper>
       </SettingGroup>
       {update.info && update.available && (
         <SettingGroup theme={theme}>
@@ -195,7 +122,7 @@ const AboutSettings: FC = () => {
               <IndicatorLight color="green" />
             </SettingRowTitle>
           </SettingRow>
-          <UpdateNotesWrapper>
+          <UpdateNotesWrapper className="markdown">
             <Markdown>
               {typeof update.info.releaseNotes === 'string'
                 ? update.info.releaseNotes.replace(/\n/g, '\n\n')
@@ -241,10 +168,10 @@ const AboutSettings: FC = () => {
         <SettingDivider />
         <SettingRow>
           <SettingRowTitle>
-            <FileCheck size={18} />
-            {t('settings.about.license.title')}
+            <Building2 size={18} />
+            {t('settings.about.enterprise.title')}
           </SettingRowTitle>
-          <Button onClick={showLicense}>{t('settings.about.license.button')}</Button>
+          <Button onClick={showEnterprise}>{t('settings.about.website.button')}</Button>
         </SettingRow>
         <SettingDivider />
         <SettingRow>
@@ -336,6 +263,23 @@ const UpdateNotesWrapper = styled.div`
     color: var(--color-text-2);
     font-size: 14px;
   }
+`
+
+const VideoTutorialWrapper = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 8px 0;
+`
+
+const VideoTutorialDescription = styled.div`
+  font-size: 14px;
+  color: var(--color-text-2);
+  line-height: 1.5;
+`
+
+const VideoTutorialButton = styled(Button)`
+  align-self: flex-start;
 `
 
 export default AboutSettings

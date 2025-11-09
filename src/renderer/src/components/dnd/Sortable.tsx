@@ -1,14 +1,10 @@
+import type { Active, DropAnimation, Modifier, Over, UniqueIdentifier } from '@dnd-kit/core'
 import {
-  Active,
   defaultDropAnimationSideEffects,
   DndContext,
   DragOverlay,
-  DropAnimation,
   KeyboardSensor,
-  Modifier,
-  Over,
   TouchSensor,
-  UniqueIdentifier,
   useSensor,
   useSensors
 } from '@dnd-kit/core'
@@ -31,7 +27,7 @@ import styled from 'styled-components'
 
 import { ItemRenderer } from './ItemRenderer'
 import { SortableItem } from './SortableItem'
-import { RenderItemType } from './types'
+import type { RenderItemType } from './types'
 import { PortalSafePointerSensor } from './utils'
 
 interface SortableProps<T> {
@@ -61,6 +57,8 @@ interface SortableProps<T> {
   className?: string
   /** Item list style */
   listStyle?: React.CSSProperties
+  /** Item style */
+  itemStyle?: React.CSSProperties
   /** Item gap */
   gap?: number | string
   /** Restrictions, shortcuts for some modifiers */
@@ -87,6 +85,7 @@ function Sortable<T>({
   showGhost = false,
   className,
   listStyle,
+  itemStyle,
   gap,
   restrictions,
   modifiers: customModifiers
@@ -195,19 +194,19 @@ function Sortable<T>({
               renderItem={renderItem}
               useDragOverlay={useDragOverlay}
               showGhost={showGhost}
+              itemStyle={itemStyle}
             />
           ))}
         </ListWrapper>
       </SortableContext>
 
-      {useDragOverlay
-        ? createPortal(
-            <DragOverlay adjustScale dropAnimation={dropAnimation}>
-              {activeItem ? <ItemRenderer item={activeItem} renderItem={renderItem} dragOverlay /> : null}
-            </DragOverlay>,
-            document.body
-          )
-        : null}
+      {useDragOverlay &&
+        createPortal(
+          <DragOverlay adjustScale dropAnimation={dropAnimation}>
+            {activeItem && <ItemRenderer item={activeItem} renderItem={renderItem} itemStyle={itemStyle} dragOverlay />}
+          </DragOverlay>,
+          document.body
+        )}
     </DndContext>
   )
 }

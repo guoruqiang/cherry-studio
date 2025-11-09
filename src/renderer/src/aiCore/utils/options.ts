@@ -2,15 +2,13 @@ import { baseProviderIdSchema, customProviderIdSchema } from '@cherrystudio/ai-c
 import { isOpenAIModel, isQwenMTModel, isSupportFlexServiceTierModel } from '@renderer/config/models'
 import { isSupportServiceTierProvider } from '@renderer/config/providers'
 import { mapLanguageToQwenMTModel } from '@renderer/config/translate'
+import type { Assistant, Model, Provider } from '@renderer/types'
 import {
-  Assistant,
   GroqServiceTiers,
   isGroqServiceTier,
   isOpenAIServiceTier,
   isTranslateAssistant,
-  Model,
   OpenAIServiceTiers,
-  Provider,
   SystemProviderIds
 } from '@renderer/types'
 import { t } from 'i18next'
@@ -19,6 +17,7 @@ import { getAiSdkProviderId } from '../provider/factory'
 import { buildGeminiGenerateImageParams } from './image'
 import {
   getAnthropicReasoningParams,
+  getBedrockReasoningParams,
   getCustomParameters,
   getGeminiReasoningParams,
   getOpenAIReasoningParams,
@@ -82,13 +81,17 @@ export function buildProviderOptions(
     // 应该覆盖所有类型
     switch (baseProviderId) {
       case 'openai':
+      case 'openai-chat':
       case 'azure':
+      case 'azure-responses':
         providerSpecificOptions = {
           ...buildOpenAIProviderOptions(assistant, model, capabilities),
           serviceTier: serviceTierSetting
         }
         break
-
+      case 'huggingface':
+        providerSpecificOptions = buildOpenAIProviderOptions(assistant, model, capabilities)
+        break
       case 'anthropic':
         providerSpecificOptions = buildAnthropicProviderOptions(assistant, model, capabilities)
         break
@@ -101,13 +104,15 @@ export function buildProviderOptions(
         providerSpecificOptions = buildXAIProviderOptions(assistant, model, capabilities)
         break
       case 'deepseek':
-      case 'openai-compatible':
+      case 'openrouter':
+      case 'openai-compatible': {
         // 对于其他 provider，使用通用的构建逻辑
         providerSpecificOptions = {
           ...buildGenericProviderOptions(assistant, model, capabilities),
           serviceTier: serviceTierSetting
         }
         break
+      }
       default:
         throw new Error(`Unsupported base provider ${baseProviderId}`)
     }
@@ -122,6 +127,9 @@ export function buildProviderOptions(
           break
         case 'google-vertex-anthropic':
           providerSpecificOptions = buildAnthropicProviderOptions(assistant, model, capabilities)
+          break
+        case 'bedrock':
+          providerSpecificOptions = buildBedrockProviderOptions(assistant, model, capabilities)
           break
         default:
           // 对于其他 provider，使用通用的构建逻辑
@@ -253,6 +261,32 @@ function buildXAIProviderOptions(
 
   if (enableReasoning) {
     const reasoningParams = getXAIReasoningParams(assistant, model)
+    providerOptions = {
+      ...providerOptions,
+      ...reasoningParams
+    }
+  }
+
+  return providerOptions
+}
+
+/**
+ * Build Bedrock providerOptions
+ */
+function buildBedrockProviderOptions(
+  assistant: Assistant,
+  model: Model,
+  capabilities: {
+    enableReasoning: boolean
+    enableWebSearch: boolean
+    enableGenerateImage: boolean
+  }
+): Record<string, any> {
+  const { enableReasoning } = capabilities
+  let providerOptions: Record<string, any> = {}
+
+  if (enableReasoning) {
+    const reasoningParams = getBedrockReasoningParams(assistant, model)
     providerOptions = {
       ...providerOptions,
       ...reasoningParams
