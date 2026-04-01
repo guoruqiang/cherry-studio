@@ -1,3 +1,4 @@
+import CherryInProviderLogo from '@renderer/assets/images/avatar.png'
 import ZhinaoProviderLogo from '@renderer/assets/images/models/360.png'
 import HunyuanProviderLogo from '@renderer/assets/images/models/hunyuan.png'
 import AzureProviderLogo from '@renderer/assets/images/models/microsoft.png'
@@ -13,7 +14,6 @@ import BailianProviderLogo from '@renderer/assets/images/providers/bailian.png'
 import BurnCloudProviderLogo from '@renderer/assets/images/providers/burncloud.png'
 import CephalonProviderLogo from '@renderer/assets/images/providers/cephalon.jpeg'
 import CerebrasProviderLogo from '@renderer/assets/images/providers/cerebras.webp'
-import CherryInProviderLogo from '@renderer/assets/images/providers/cherryin.png'
 import DeepSeekProviderLogo from '@renderer/assets/images/providers/deepseek.png'
 import DmxapiProviderLogo from '@renderer/assets/images/providers/DMXAPI.png'
 import FireworksProviderLogo from '@renderer/assets/images/providers/fireworks.png'
@@ -75,18 +75,18 @@ export const CHERRYAI_PROVIDER: SystemProvider = {
   apiHost: 'https://api.cherry-ai.com',
   models: [qwenModel],
   isSystem: true,
-  enabled: true
+  enabled: false
 }
 
 export const SYSTEM_PROVIDERS_CONFIG: Record<SystemProviderId, SystemProvider> = {
   cherryin: {
     id: 'cherryin',
-    name: 'CherryIN',
+    name: 'NWAFUER',
     type: 'openai',
     apiKey: '',
-    apiHost: 'https://open.cherryin.net',
-    anthropicApiHost: 'https://open.cherryin.net',
-    models: [],
+    apiHost: 'https://api.nwafu-ai.cn',
+    anthropicApiHost: 'https://api.nwafu-ai.cn',
+    models: SYSTEM_MODELS.cherryin,
     isSystem: true,
     enabled: true
   },
@@ -833,13 +833,13 @@ type ProviderUrls = {
 export const PROVIDER_URLS: Record<SystemProviderId, ProviderUrls> = {
   cherryin: {
     api: {
-      url: 'https://open.cherryin.net'
+      url: 'https://api.nwafu-ai.cn'
     },
     websites: {
-      official: 'https://open.cherryin.ai',
-      apiKey: 'https://open.cherryin.ai/console/token',
-      docs: 'https://open.cherryin.ai',
-      models: 'https://open.cherryin.ai/pricing'
+      official: 'https://gpt.nwafu-ai.cn',
+      apiKey: 'https://gpt.nwafu-ai.cn/console/token',
+      docs: 'https://gpt.nwafu-ai.cn',
+      models: 'https://gpt.nwafu-ai.cn/pricing'
     }
   },
   ph8: {

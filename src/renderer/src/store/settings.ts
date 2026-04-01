@@ -44,6 +44,7 @@ import { v4 as uuid } from 'uuid'
 import type { RemoteSyncState } from './backup'
 
 export type SendMessageShortcut = 'Enter' | 'Shift+Enter' | 'Ctrl+Enter' | 'Command+Enter' | 'Alt+Enter'
+export const DEFAULT_USER_NAME = '西农er'
 
 // Re-export for backward compatibility
 export { DEFAULT_SIDEBAR_ICONS }
@@ -262,7 +263,7 @@ export const initialState: SettingsState = {
   proxyMode: 'system',
   proxyUrl: undefined,
   proxyBypassRules: undefined,
-  userName: '',
+  userName: DEFAULT_USER_NAME,
   userId: uuid(),
   showPrompt: true,
   showMessageDivider: true,
@@ -490,7 +491,7 @@ const settingsSlice = createSlice({
       state.proxyBypassRules = action.payload
     },
     setUserName: (state, action: PayloadAction<string>) => {
-      state.userName = action.payload
+      state.userName = action.payload || DEFAULT_USER_NAME
     },
     setShowPrompt: (state, action: PayloadAction<boolean>) => {
       state.showPrompt = action.payload

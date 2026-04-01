@@ -12,11 +12,11 @@ import { useTimer } from '@renderer/hooks/useTimer'
 import ImageStorage from '@renderer/services/ImageStorage'
 import type { Provider, ProviderType } from '@renderer/types'
 import { isSystemProvider } from '@renderer/types'
-import { getFancyProviderName, matchKeywordsInModel, matchKeywordsInProvider, uuid } from '@renderer/utils'
+import { getFancyProviderName, matchKeywordsInModel, matchKeywordsInProvider } from '@renderer/utils'
 import { isAnthropicSupportedProvider } from '@renderer/utils/provider'
 import type { MenuProps } from 'antd'
-import { Button, Dropdown, Input, Tag } from 'antd'
-import { Check, Filter, GripVertical, PlusIcon, Search, UserPen } from 'lucide-react'
+import { Dropdown, Input, Tag } from 'antd'
+import { Check, Filter, GripVertical, Search, UserPen } from 'lucide-react'
 import type { FC } from 'react'
 import { startTransition, useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -32,6 +32,7 @@ import UrlSchemaInfoPopup from './UrlSchemaInfoPopup'
 const logger = loggerService.withContext('ProviderList')
 
 const BUTTON_WRAPPER_HEIGHT = 50
+const VISIBLE_PROVIDER_IDS = ['cherryin'] as const
 
 const getIsOvmsSupported = async (): Promise<boolean> => {
   try {
@@ -52,8 +53,11 @@ const ProviderList: FC<ProviderListProps> = ({ isOnboarding = false }) => {
   const [searchParams, setSearchParams] = useSearchParams()
   const providers = useAllProviders()
   const { updateProviders, addProvider, removeProvider, updateProvider } = useProviders()
+  const visibleProviders = providers.filter((provider) =>
+    VISIBLE_PROVIDER_IDS.includes(provider.id as (typeof VISIBLE_PROVIDER_IDS)[number])
+  )
   const { setTimeoutTimer } = useTimer()
-  const [selectedProvider, _setSelectedProvider] = useState<Provider>(providers[0])
+  const [selectedProvider, _setSelectedProvider] = useState<Provider>(visibleProviders[0])
   const { t } = useTranslation()
   const [searchText, setSearchText] = useState<string>('')
   const [dragging, setDragging] = useState(false)
@@ -70,7 +74,7 @@ const ProviderList: FC<ProviderListProps> = ({ isOnboarding = false }) => {
   useEffect(() => {
     const loadAllLogos = async () => {
       const logos: Record<string, string> = {}
-      for (const provider of providers) {
+      for (const provider of visibleProviders) {
         if (provider.id) {
           try {
             const logoData = await ImageStorage.get(`provider-${provider.id}`)
@@ -86,7 +90,7 @@ const ProviderList: FC<ProviderListProps> = ({ isOnboarding = false }) => {
     }
 
     void loadAllLogos()
-  }, [providers])
+  }, [visibleProviders])
 
   useEffect(() => {
     let shouldUpdate = false
@@ -100,11 +104,11 @@ const ProviderList: FC<ProviderListProps> = ({ isOnboarding = false }) => {
       shouldUpdate = true
     } else if (searchParams.get('id')) {
       const providerId = searchParams.get('id')
-      const provider = providers.find((p) => p.id === providerId)
+      const provider = visibleProviders.find((p) => p.id === providerId)
       if (provider) {
         setSelectedProvider(provider)
         // 滚动到选中的 provider
-        const index = providers.findIndex((p) => p.id === providerId)
+        const index = visibleProviders.findIndex((p) => p.id === providerId)
         if (index >= 0) {
           setTimeoutTimer(
             'scroll-to-selected-provider',
@@ -113,7 +117,7 @@ const ProviderList: FC<ProviderListProps> = ({ isOnboarding = false }) => {
           )
         }
       } else {
-        setSelectedProvider(providers[0])
+        setSelectedProvider(visibleProviders[0])
       }
       searchParams.delete('id')
       shouldUpdate = true
@@ -122,7 +126,7 @@ const ProviderList: FC<ProviderListProps> = ({ isOnboarding = false }) => {
     if (shouldUpdate) {
       setSearchParams(searchParams)
     }
-  }, [providers, searchParams, setSearchParams, setSelectedProvider, setTimeoutTimer])
+  }, [visibleProviders, searchParams, setSearchParams, setSelectedProvider, setTimeoutTimer])
 
   // Handle provider add key from URL schema
   useEffect(() => {
@@ -173,43 +177,6 @@ const ProviderList: FC<ProviderListProps> = ({ isOnboarding = false }) => {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams])
-
-  const onAddProvider = async () => {
-    const { name: providerName, type, logo } = await AddProviderPopup.show()
-
-    if (!providerName.trim()) {
-      return
-    }
-
-    const provider = {
-      id: uuid(),
-      name: providerName.trim(),
-      type,
-      apiKey: '',
-      apiHost: '',
-      models: [],
-      enabled: true,
-      isSystem: false
-    } as Provider
-
-    let updatedLogos = { ...providerLogos }
-    if (logo) {
-      try {
-        await ImageStorage.set(`provider-${provider.id}`, logo)
-        updatedLogos = {
-          ...updatedLogos,
-          [provider.id]: logo
-        }
-        setProviderLogos(updatedLogos)
-      } catch (error) {
-        logger.error('Failed to save logo', error as Error)
-        window.toast.error(t('message.error.save_provider_logo'))
-      }
-    }
-
-    addProvider(provider)
-    setSelectedProvider(provider)
-  }
 
   const getDropdownMenus = (provider: Provider): MenuProps['items'] => {
     const noteMenu = {
@@ -284,7 +251,7 @@ const ProviderList: FC<ProviderListProps> = ({ isOnboarding = false }) => {
               }
             }
 
-            setSelectedProvider(providers.filter((p) => isSystemProvider(p))[0])
+            setSelectedProvider(visibleProviders.filter((p) => isSystemProvider(p))[0])
             removeProvider(provider)
           }
         })
@@ -293,7 +260,7 @@ const ProviderList: FC<ProviderListProps> = ({ isOnboarding = false }) => {
 
     const menus = [editMenu, noteMenu, deleteMenu]
 
-    if (providers.filter((p) => p.id === provider.id).length > 1) {
+    if (visibleProviders.filter((p) => p.id === provider.id).length > 1) {
       return menus
     }
 
@@ -308,7 +275,7 @@ const ProviderList: FC<ProviderListProps> = ({ isOnboarding = false }) => {
     }
   }
 
-  const filteredProviders = providers.filter((provider) => {
+  const filteredProviders = visibleProviders.filter((provider) => {
     // don't show it when isOvmsSupported is loading
     if (provider.id === 'ovms' && !isOvmsSupported) {
       return false
@@ -326,7 +293,7 @@ const ProviderList: FC<ProviderListProps> = ({ isOnboarding = false }) => {
   })
 
   const { onDragEnd: handleReorder, itemKey } = useDraggableReorder({
-    originalList: providers,
+    originalList: visibleProviders,
     filteredList: filteredProviders,
     onUpdate: updateProviders,
     itemKey: 'id'
@@ -436,13 +403,7 @@ const ProviderList: FC<ProviderListProps> = ({ isOnboarding = false }) => {
           )}
         </DraggableVirtualList>
         <AddButtonWrapper>
-          <Button
-            style={{ width: '100%', borderRadius: 'var(--list-item-border-radius)' }}
-            icon={<PlusIcon size={16} />}
-            onClick={onAddProvider}
-            disabled={dragging}>
-            {t('button.add')}
-          </Button>
+          <div />
         </AddButtonWrapper>
       </ProviderListContainer>
       <ProviderSetting providerId={selectedProvider.id} key={selectedProvider.id} isOnboarding={isOnboarding} />

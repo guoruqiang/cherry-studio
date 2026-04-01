@@ -9,6 +9,7 @@ import { getMessageModelId } from '@renderer/services/MessagesService'
 import { getModelName } from '@renderer/services/ModelService'
 import { useAppDispatch } from '@renderer/store'
 import { newMessagesActions } from '@renderer/store/newMessage'
+import { DEFAULT_USER_NAME } from '@renderer/store/settings'
 // import { updateMessageThunk } from '@renderer/store/thunk/messageThunk'
 import type { Message } from '@renderer/types/newMessage'
 import { isEmoji, removeLeadingEmoji } from '@renderer/utils'
@@ -17,7 +18,6 @@ import { getMainTextContent } from '@renderer/utils/messageUtils/find'
 import { Avatar } from 'antd'
 import { CircleChevronDown } from 'lucide-react'
 import { type FC, useCallback, useEffect, useRef, useState } from 'react'
-import { useTranslation } from 'react-i18next'
 import styled from 'styled-components'
 
 interface MessageLineProps {
@@ -30,7 +30,6 @@ const getAvatarSource = (isLocalAi: boolean, modelId: string | undefined) => {
 }
 
 const MessageAnchorLine: FC<MessageLineProps> = ({ messages }) => {
-  const { t } = useTranslation()
   const avatar = useAvatar()
   const { theme } = useTheme()
   const dispatch = useAppDispatch()
@@ -96,9 +95,9 @@ const MessageAnchorLine: FC<MessageLineProps> = ({ messages }) => {
         return modelId || ''
       }
 
-      return userName || t('common.you')
+      return userName || DEFAULT_USER_NAME
     },
-    [userName, t]
+    [userName]
   )
 
   const setSelectedMessage = useCallback(

@@ -1,6 +1,5 @@
 import { createSelector } from '@reduxjs/toolkit'
 import { isNotSupportTextDeltaModel } from '@renderer/config/models'
-import { CHERRYAI_PROVIDER } from '@renderer/config/providers'
 import { getDefaultProvider } from '@renderer/services/AssistantService'
 import { type RootState, useAppDispatch, useAppSelector } from '@renderer/store'
 import {
@@ -34,10 +33,7 @@ function normalizeProvider<T extends Provider>(provider: T): T {
 const selectProviders = (state: RootState) => state.llm.providers
 
 const selectEnabledProviders = createSelector(selectProviders, (providers) =>
-  providers
-    .map(normalizeProvider)
-    .filter((p) => p.enabled)
-    .concat(CHERRYAI_PROVIDER)
+  providers.map(normalizeProvider).filter((p) => p.enabled)
 )
 
 const selectSystemProviders = createSelector(selectProviders, (providers) =>
@@ -49,10 +45,6 @@ const selectUserProviders = createSelector(selectProviders, (providers) =>
 )
 
 const selectAllProviders = createSelector(selectProviders, (providers) => providers.map(normalizeProvider))
-
-const selectAllProvidersWithCherryAI = createSelector(selectProviders, (providers) =>
-  [...providers, CHERRYAI_PROVIDER].map(normalizeProvider)
-)
 
 export function useProviders() {
   const providers: Provider[] = useAppSelector(selectEnabledProviders)
@@ -80,7 +72,7 @@ export function useAllProviders() {
 }
 
 export function useProvider(id: string) {
-  const allProviders = useAppSelector(selectAllProvidersWithCherryAI)
+  const allProviders = useAppSelector(selectAllProviders)
   const provider = useMemo(() => allProviders.find((p) => p.id === id) || getDefaultProvider(), [allProviders, id])
   const dispatch = useAppDispatch()
 

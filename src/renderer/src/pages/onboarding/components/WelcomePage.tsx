@@ -14,7 +14,7 @@ import ProviderPopup from './ProviderPopup'
 
 const logger = loggerService.withContext('WelcomePage')
 
-const CHERRYIN_OAUTH_SERVER = 'https://open.cherryin.ai'
+const CHERRYIN_OAUTH_SERVER = 'https://gpt.nwafu-ai.cn'
 
 interface WelcomePageProps {
   setStep: (step: OnboardingStep) => void
@@ -41,7 +41,7 @@ const WelcomePage: FC<WelcomePageProps> = ({ setStep, setCherryInLoggedIn }) => 
             const models = await fetchModels(updatedProvider)
             if (models.length > 0) {
               models.forEach((model) => addModel(model))
-              logger.info(`Auto-added ${models.length} models from CherryIN`)
+              logger.info(`Auto-added ${models.length} models from NWAFUER`)
             }
           } catch (fetchError) {
             logger.warn('Failed to auto-fetch models:', fetchError as Error)

@@ -7,18 +7,59 @@ export const qwenModel: Model = {
   group: 'Qwen'
 }
 
+export const nwafuerDefaultModel: Model = {
+  id: 'gpt-5.4',
+  name: 'GPT 5.4',
+  provider: 'cherryin',
+  group: 'GPT-5'
+}
+
+export const nwafuerTranslateModel: Model = {
+  id: 'deepseek-chat',
+  name: 'deepseek-chat',
+  provider: 'cherryin',
+  group: 'DeepSeek'
+}
+
+export const nwafuerReasonerModel: Model = {
+  id: 'deepseek-reasoner',
+  name: 'deepseek-reasoner',
+  provider: 'cherryin',
+  group: 'DeepSeek'
+}
+
+export const nwafuerGpt5Model: Model = {
+  id: 'gpt-5',
+  name: 'GPT 5',
+  provider: 'cherryin',
+  group: 'GPT-5'
+}
+
+export const nwafuerGpt53CodexModel: Model = {
+  id: 'gpt-5.3-codex',
+  name: 'GPT 5.3 Codex',
+  provider: 'cherryin',
+  group: 'GPT-5'
+}
+
 export const SYSTEM_MODELS: Record<SystemProviderId | 'defaultModel', Model[]> = {
   defaultModel: [
     // Default assistant model
-    qwenModel,
+    nwafuerDefaultModel,
     // Default topic naming model
-    qwenModel,
+    nwafuerDefaultModel,
     // Default translation model
-    qwenModel,
+    nwafuerTranslateModel,
     // Default quick assistant model
-    qwenModel
+    nwafuerDefaultModel
   ],
-  cherryin: [],
+  cherryin: [
+    nwafuerTranslateModel,
+    nwafuerReasonerModel,
+    nwafuerGpt5Model,
+    nwafuerDefaultModel,
+    nwafuerGpt53CodexModel
+  ],
   vertexai: [],
   sophnet: [],
   '302ai': [

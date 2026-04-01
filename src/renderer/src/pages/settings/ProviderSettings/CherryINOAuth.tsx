@@ -1,5 +1,5 @@
 import { loggerService } from '@logger'
-import CherryINProviderLogo from '@renderer/assets/images/providers/cherryin.png'
+import CherryINProviderLogo from '@renderer/assets/images/avatar.png'
 import { useProvider } from '@renderer/hooks/useProvider'
 import { oauthWithCherryIn } from '@renderer/utils/oauth'
 import { Button, Skeleton } from 'antd'
@@ -12,8 +12,8 @@ import styled from 'styled-components'
 
 const logger = loggerService.withContext('CherryINOAuth')
 
-const CHERRYIN_OAUTH_SERVER = 'https://open.cherryin.ai'
-const CHERRYIN_TOPUP_URL = 'https://open.cherryin.ai/console/topup'
+const CHERRYIN_OAUTH_SERVER = 'https://gpt.nwafu-ai.cn'
+const CHERRYIN_TOPUP_URL = 'https://gpt.nwafu-ai.cn/console/topup'
 
 /**
  * Generate avatar initials from a name (first 2 characters)
@@ -187,12 +187,12 @@ const CherryINOAuth: FC<CherryINOAuthProps> = ({ providerId }) => {
           <LogOut size={14} />
         </LogoutCorner>
       )}
-      <ProviderLogo src={CherryINProviderLogo} onClick={() => window.open('https://open.cherryin.ai', '_blank')} />
+      <ProviderLogo src={CherryINProviderLogo} onClick={() => window.open('https://gpt.nwafu-ai.cn', '_blank')} />
       {renderContent()}
       <Description>
         {t('settings.provider.oauth.provided_by')}{' '}
-        <OfficialWebsite href="https://open.cherryin.ai" target="_blank" rel="noreferrer">
-          open.cherryin.ai
+        <OfficialWebsite href="https://gpt.nwafu-ai.cn" target="_blank" rel="noreferrer">
+          gpt.nwafu-ai.cn
         </OfficialWebsite>
         {t('settings.provider.oauth.provided_by_suffix')}
       </Description>

@@ -1,11 +1,6 @@
 import { OpenClawIcon } from '@renderer/components/Icons/SVGIcon'
-import App from '@renderer/components/MinApp/MinApp'
-import { useMinapps } from '@renderer/hooks/useMinapps'
-import { useRuntime } from '@renderer/hooks/useRuntime'
-import { useSettings } from '@renderer/hooks/useSettings'
-import { Code, FileSearch, Folder, Languages, LayoutGrid, NotepadText, Palette, Sparkle } from 'lucide-react'
+import { Code, FileSearch, Folder, Languages, NotepadText, Sparkle } from 'lucide-react'
 import type { FC } from 'react'
-import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
 import styled from 'styled-components'
@@ -13,81 +8,51 @@ import styled from 'styled-components'
 const LaunchpadPage: FC = () => {
   const navigate = useNavigate()
   const { t } = useTranslation()
-  const { defaultPaintingProvider } = useSettings()
-  const { pinned } = useMinapps()
-  const { openedKeepAliveMinapps } = useRuntime()
 
   const appMenuItems = [
-    {
-      icon: <LayoutGrid size={32} className="icon" />,
-      text: t('title.apps'),
-      path: '/apps',
-      bgColor: 'linear-gradient(135deg, #8B5CF6, #A855F7)' // 小程序：紫色，代表多功能和灵活性
-    },
     {
       icon: <FileSearch size={32} className="icon" />,
       text: t('title.knowledge'),
       path: '/knowledge',
-      bgColor: 'linear-gradient(135deg, #10B981, #34D399)' // 知识库：翠绿色，代表生长和知识
-    },
-    {
-      icon: <Palette size={32} className="icon" />,
-      text: t('title.paintings'),
-      path: `/paintings/${defaultPaintingProvider}`,
-      bgColor: 'linear-gradient(135deg, #EC4899, #F472B6)' // 绘画：活力粉色，代表创造力和艺术
+      bgColor: 'linear-gradient(135deg, #10B981, #34D399)'
     },
     {
       icon: <Sparkle size={32} className="icon" />,
       text: t('title.store'),
       path: '/store',
-      bgColor: 'linear-gradient(135deg, #6366F1, #4F46E5)' // AI助手：靛蓝渐变，代表智能和科技
+      bgColor: 'linear-gradient(135deg, #6366F1, #4F46E5)'
     },
     {
       icon: <Languages size={32} className="icon" />,
       text: t('title.translate'),
       path: '/translate',
-      bgColor: 'linear-gradient(135deg, #06B6D4, #0EA5E9)' // 翻译：明亮的青蓝色，代表沟通和流畅
+      bgColor: 'linear-gradient(135deg, #06B6D4, #0EA5E9)'
     },
     {
       icon: <Folder size={32} className="icon" />,
       text: t('title.files'),
       path: '/files',
-      bgColor: 'linear-gradient(135deg, #F59E0B, #FBBF24)' // 文件：金色，代表资源和重要性
+      bgColor: 'linear-gradient(135deg, #F59E0B, #FBBF24)'
     },
     {
       icon: <Code size={32} className="icon" />,
       text: t('title.code'),
       path: '/code',
-      bgColor: 'linear-gradient(135deg, #1F2937, #374151)' // Code CLI：高级暗黑色，代表专业和技术
+      bgColor: 'linear-gradient(135deg, #1F2937, #374151)'
     },
     {
       icon: <OpenClawIcon className="icon" />,
       text: t('title.openclaw'),
       path: '/openclaw',
-      bgColor: 'linear-gradient(135deg, #EF4444, #B91C1C)' // OpenClaw：红色渐变，代表龙虾的颜色
+      bgColor: 'linear-gradient(135deg, #EF4444, #B91C1C)'
     },
     {
       icon: <NotepadText size={32} className="icon" />,
       text: t('title.notes'),
       path: '/notes',
-      bgColor: 'linear-gradient(135deg, #F97316, #FB923C)' // 笔记：橙色，代表活力和清晰思路
+      bgColor: 'linear-gradient(135deg, #F97316, #FB923C)'
     }
   ]
-
-  // 合并并排序小程序列表
-  const sortedMinapps = useMemo(() => {
-    // 先添加固定的小程序，保持原有顺序
-    const result = [...pinned]
-
-    // 再添加其他已打开但未固定的小程序
-    openedKeepAliveMinapps.forEach((app) => {
-      if (!result.some((pinnedApp) => pinnedApp.id === app.id)) {
-        result.push(app)
-      }
-    })
-
-    return result
-  }, [openedKeepAliveMinapps, pinned])
 
   return (
     <Container>
@@ -105,19 +70,6 @@ const LaunchpadPage: FC = () => {
             ))}
           </Grid>
         </Section>
-
-        {sortedMinapps.length > 0 && (
-          <Section>
-            <SectionTitle>{t('launchpad.minapps')}</SectionTitle>
-            <Grid>
-              {sortedMinapps.map((app) => (
-                <AppWrapper key={app.id}>
-                  <App app={app} size={56} />
-                </AppWrapper>
-              ))}
-            </Grid>
-          </Section>
-        )}
       </Content>
     </Container>
   )
@@ -217,20 +169,6 @@ const AppName = styled.div`
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-`
-
-const AppWrapper = styled.div`
-  padding: 8px 4px;
-  border-radius: 8px;
-  transition: transform 0.2s ease;
-
-  &:hover {
-    transform: scale(1.05);
-  }
-
-  &:active {
-    transform: scale(0.95);
-  }
 `
 
 export default LaunchpadPage

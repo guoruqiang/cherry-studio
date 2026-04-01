@@ -66,10 +66,8 @@ export default class AppUpdater {
   constructor() {
     autoUpdater.logger = logger as Logger
     autoUpdater.forceDevUpdateConfig = !app.isPackaged
-    autoUpdater.autoDownload = configManager.getAutoUpdate()
-    // Never auto-install on quit - user must explicitly click "Install Now"
-    // Auto-install on quit can cause issues: unexpected updates on restart,
-    // corruption if system shuts down during install, or app uninstall on force shutdown
+    // Keep custom builds on manual updates only.
+    autoUpdater.autoDownload = false
     autoUpdater.autoInstallOnAppQuit = false
     autoUpdater.requestHeaders = {
       ...autoUpdater.requestHeaders,
@@ -112,8 +110,9 @@ export default class AppUpdater {
   }
 
   public setAutoUpdate(isActive: boolean) {
-    autoUpdater.autoDownload = isActive
-    // autoInstallOnAppQuit is always false - user must explicitly click "Install Now"
+    void isActive
+    autoUpdater.autoDownload = false
+    autoUpdater.autoInstallOnAppQuit = false
   }
 
   private _getChannelByVersion(version: string) {
@@ -291,7 +290,9 @@ export default class AppUpdater {
   public async checkForUpdates() {
     void analyticsService.trackAppUpdate()
 
-    if (isWin && 'PORTABLE_EXECUTABLE_DIR' in process.env) {
+    const updatesEnabled = process.env.CHERRY_STUDIO_ENABLE_UPDATES === 'true'
+    if (!updatesEnabled) {
+      logger.info('Update check disabled for this customized build')
       return {
         currentVersion: app.getVersion(),
         updateInfo: null
@@ -299,13 +300,6 @@ export default class AppUpdater {
     }
 
     try {
-      await this._setFeedUrl()
-
-      this.updateCheckResult = await this.autoUpdater.checkForUpdates()
-      logger.info(
-        `update check result: ${this.updateCheckResult?.isUpdateAvailable}, channel: ${this.autoUpdater.channel}, currentVersion: ${this.autoUpdater.currentVersion}`
-      )
-
       if (this.updateCheckResult?.isUpdateAvailable && !this.autoUpdater.autoDownload) {
         // 如果 autoDownload 为 false，则需要再调用下面的函数触发下
         // do not use await, because it will block the return of this function

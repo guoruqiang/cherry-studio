@@ -12,6 +12,7 @@ import { useRuntime } from '@renderer/hooks/useRuntime'
 import { useMessageStyle, useSettings } from '@renderer/hooks/useSettings'
 import { getMessageModelId } from '@renderer/services/MessagesService'
 import { getModelName } from '@renderer/services/ModelService'
+import { DEFAULT_USER_NAME } from '@renderer/store/settings'
 import type { Assistant, Model, Topic } from '@renderer/types'
 import type { Message } from '@renderer/types/newMessage'
 import { firstLetter, isEmoji, removeLeadingEmoji } from '@renderer/utils'
@@ -69,7 +70,7 @@ const MessageHeader: FC<Props> = memo(({ assistant, model, message, topic, isGro
       return getModelName(model) || getMessageModelId(message) || ''
     }
 
-    return userName || t('common.you')
+    return userName || DEFAULT_USER_NAME
   }, [agent?.name, isAgentView, message, model, t, userName])
 
   const isAssistantMessage = message.role === 'assistant'

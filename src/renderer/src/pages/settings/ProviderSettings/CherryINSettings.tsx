@@ -11,19 +11,9 @@ interface CherryINSettingsProps {
 
 const API_HOST_OPTIONS = [
   {
-    value: 'https://open.cherryin.cc',
-    labelKey: '加速域名',
-    description: 'open.cherryin.cc'
-  },
-  {
-    value: 'https://open.cherryin.net',
-    labelKey: '国际域名',
-    description: 'open.cherryin.net'
-  },
-  {
-    value: 'https://open.cherryin.ai',
-    labelKey: '备用域名',
-    description: 'open.cherryin.ai'
+    value: 'https://api.nwafu-ai.cn',
+    labelKey: '默认域名',
+    description: 'api.nwafu-ai.cn'
   }
 ]
 

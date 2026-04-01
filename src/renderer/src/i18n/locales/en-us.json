@@ -2627,16 +2627,16 @@
     },
     "skip": "Skip",
     "toast": {
-      "connected": "Successfully connected to CherryIN"
+      "connected": "Successfully connected to NWAFUER"
     },
     "welcome": {
-      "login_cherryin": "Login with CherryIN",
+      "login_cherryin": "Login with NWAFUER",
       "or_continue_with": "OR CONTINUE WITH",
-      "other_provider": "Choose Other Providers",
-      "select_other_provider": "Select Other Provider",
-      "setup_hint": "Please configure at least one provider for the best experience",
-      "subtitle": "Enjoy top-tier AI services with CherryIN",
-      "title": "Welcome to Cherry Studio"
+      "other_provider": "Enter API Key Manually",
+      "select_other_provider": "Enter API Key Manually",
+      "setup_hint": "",
+      "subtitle": "Enjoy top-tier AI services with NWAFUER",
+      "title": "Welcome to NWAFUer's Cherry Studio"
     }
   },
   "openclaw": {
@@ -3116,7 +3116,7 @@
     "burncloud": "BurnCloud",
     "cephalon": "Cephalon",
     "cerebras": "Cerebras AI",
-    "cherryin": "CherryIN",
+    "cherryin": "NWAFUER",
     "copilot": "GitHub Copilot",
     "dashscope": "Alibaba Cloud",
     "deepseek": "DeepSeek",
@@ -5158,7 +5158,7 @@
         "balance": "Balance",
         "button": "Login with {{provider}}",
         "cherryIn": {
-          "description": "Login to CherryIN using OAuth 2.0",
+          "description": "Login to NWAFUER using OAuth 2.0",
           "logged_in": "Logged in via OAuth",
           "login_button": "Login with OAuth",
           "logout_button": "Logout",

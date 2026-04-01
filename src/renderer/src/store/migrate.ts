@@ -23,7 +23,14 @@ import {
   isMac
 } from '@renderer/config/constant'
 import { allMinApps } from '@renderer/config/minapps'
-import { isFunctionCallingModel, isNotSupportTextDeltaModel, qwenModel, SYSTEM_MODELS } from '@renderer/config/models'
+import {
+  isFunctionCallingModel,
+  isNotSupportTextDeltaModel,
+  nwafuerDefaultModel,
+  nwafuerTranslateModel,
+  qwenModel,
+  SYSTEM_MODELS
+} from '@renderer/config/models'
 import { BUILTIN_OCR_PROVIDERS, BUILTIN_OCR_PROVIDERS_MAP, DEFAULT_OCR_PROVIDER } from '@renderer/config/ocr'
 import { TRANSLATE_PROMPT } from '@renderer/config/prompts'
 import { SYSTEM_PROVIDERS } from '@renderer/config/providers'
@@ -3387,6 +3394,131 @@ const migrateConfig = {
       return state
     } catch (error) {
       logger.error('migrate 205 error', error as Error)
+      return state
+    }
+  },
+  '206': (state: RootState) => {
+    try {
+      const shouldReplaceOldDefault = (model?: Model) =>
+        !!model && (model.provider === 'cherryai' || (model.provider === 'cherryin' && model.id === 'qwen'))
+
+      if (shouldReplaceOldDefault(state.llm.defaultModel)) {
+        state.llm.defaultModel = nwafuerDefaultModel
+      }
+
+      if (shouldReplaceOldDefault(state.llm.topicNamingModel)) {
+        state.llm.topicNamingModel = nwafuerDefaultModel
+      }
+
+      if (shouldReplaceOldDefault(state.llm.quickModel)) {
+        state.llm.quickModel = nwafuerDefaultModel
+      }
+
+      if (shouldReplaceOldDefault(state.llm.translateModel)) {
+        state.llm.translateModel = nwafuerTranslateModel
+      }
+
+      logger.info('migrate 206 success')
+      return state
+    } catch (error) {
+      logger.error('migrate 206 error', error as Error)
+      return state
+    }
+  },
+  '207': (state: RootState) => {
+    try {
+      const shouldReplaceOldDefault = (model?: Model) =>
+        !!model && (model.provider === 'cherryai' || (model.provider === 'cherryin' && model.id === 'qwen'))
+
+      const replaceAssistantModel = (model?: Model) => {
+        if (!model) {
+          return model
+        }
+
+        if (!shouldReplaceOldDefault(model)) {
+          return model
+        }
+
+        return nwafuerDefaultModel
+      }
+
+      state.assistants.defaultAssistant.model = replaceAssistantModel(state.assistants.defaultAssistant.model)
+      state.assistants.defaultAssistant.defaultModel = replaceAssistantModel(
+        state.assistants.defaultAssistant.defaultModel
+      )
+
+      state.assistants.assistants = state.assistants.assistants.map((assistant) => ({
+        ...assistant,
+        model: replaceAssistantModel(assistant.model),
+        defaultModel: replaceAssistantModel(assistant.defaultModel)
+      }))
+
+      logger.info('migrate 207 success')
+      return state
+    } catch (error) {
+      logger.error('migrate 207 error', error as Error)
+      return state
+    }
+  },
+  '208': (state: RootState) => {
+    try {
+      if (state.settings?.sidebarIcons) {
+        state.settings.sidebarIcons.visible = state.settings.sidebarIcons.visible.filter(
+          (icon) => icon !== 'paintings' && icon !== 'minapp'
+        )
+        state.settings.sidebarIcons.disabled = state.settings.sidebarIcons.disabled.filter(
+          (icon) => icon !== 'paintings' && icon !== 'minapp'
+        )
+      }
+
+      if (state.tabs?.tabs) {
+        state.tabs.tabs = state.tabs.tabs.filter((tab) => tab.id !== 'agents')
+        if (state.tabs.activeTabId === 'agents') {
+          state.tabs.activeTabId = 'home'
+        }
+      }
+
+      logger.info('migrate 208 success')
+      return state
+    } catch (error) {
+      logger.error('migrate 208 error', error as Error)
+      return state
+    }
+  },
+  '209': (state: RootState) => {
+    try {
+      const fixedTabs: RootState['tabs']['tabs'] = [
+        { id: 'home', path: '/' },
+        { id: 'translate', path: '/translate' },
+        { id: 'knowledge', path: '/knowledge' }
+      ]
+
+      const existingTabs = state.tabs?.tabs ?? []
+      const nonFixedTabs = existingTabs.filter((tab) => !fixedTabs.some((fixedTab) => fixedTab.id === tab.id))
+
+      state.tabs.tabs = [...fixedTabs, ...nonFixedTabs]
+
+      if (!state.tabs.activeTabId) {
+        state.tabs.activeTabId = 'home'
+      }
+
+      logger.info('migrate 209 success')
+      return state
+    } catch (error) {
+      logger.error('migrate 209 error', error as Error)
+      return state
+    }
+  },
+  '210': (state: RootState) => {
+    try {
+      if (!state.settings.userName?.trim()) {
+        state.settings.userName = '西农er'
+      }
+
+      logger.info('migrate 210 success')
+      return state
+    } catch (error) {
+      logger.error('migrate 210 error', error as Error)
       return state
     }
   }

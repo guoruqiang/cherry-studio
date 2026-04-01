@@ -5,7 +5,7 @@ import { useSettings } from '@renderer/hooks/useSettings'
 import ImageStorage from '@renderer/services/ImageStorage'
 import { useAppDispatch } from '@renderer/store'
 import { setAvatar } from '@renderer/store/runtime'
-import { setUserName } from '@renderer/store/settings'
+import { DEFAULT_USER_NAME, setUserName } from '@renderer/store/settings'
 import { compressImage, isEmoji } from '@renderer/utils'
 import { Avatar, Dropdown, Input, Modal, Popover, Upload } from 'antd'
 import React, { useState } from 'react'
@@ -169,7 +169,7 @@ const PopupContainer: React.FC<Props> = ({ resolve }) => {
       <HStack alignItems="center" gap="10px" p="20px">
         <Input
           placeholder={t('settings.general.user_name.placeholder')}
-          value={userName}
+          value={userName || DEFAULT_USER_NAME}
           onChange={(e) => dispatch(setUserName(e.target.value.trim()))}
           style={{ flex: 1, textAlign: 'center', width: '100%' }}
           maxLength={30}

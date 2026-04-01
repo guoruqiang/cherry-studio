@@ -2627,16 +2627,16 @@
     },
     "skip": "跳过引导",
     "toast": {
-      "connected": "成功连接 CherryIN"
+      "connected": "成功连接 NWAFUER"
     },
     "welcome": {
-      "login_cherryin": "登录 CherryIN",
+      "login_cherryin": "登录 NWAFUER",
       "or_continue_with": "或使用其他方式",
-      "other_provider": "选择其他服务商",
-      "select_other_provider": "选择其他服务商",
-      "setup_hint": "请您先至少配置一个服务商，以获得最佳使用体验",
-      "subtitle": "使用 CherryIN 服务商可畅享顶级 AI 服务",
-      "title": "欢迎使用 Cherry Studio"
+      "other_provider": "手动填入令牌(API-KEY)",
+      "select_other_provider": "手动填入令牌(API-KEY)",
+      "setup_hint": "",
+      "subtitle": "使用 NWAFUER 服务商可畅享顶级 AI 服务",
+      "title": "欢迎使用 西农er's Cherry Studio"
     }
   },
   "openclaw": {
@@ -3116,7 +3116,7 @@
     "burncloud": "BurnCloud",
     "cephalon": "Cephalon",
     "cerebras": "Cerebras AI",
-    "cherryin": "CherryIN",
+    "cherryin": "NWAFUER",
     "copilot": "GitHub Copilot",
     "dashscope": "阿里云百炼",
     "deepseek": "深度求索",
@@ -5158,7 +5158,7 @@
         "balance": "余额",
         "button": "使用 {{provider}} 账号登录",
         "cherryIn": {
-          "description": "使用 OAuth 2.0 登录 CherryIN",
+          "description": "使用 OAuth 2.0 登录 NWAFUER",
           "logged_in": "已通过 OAuth 登录",
           "login_button": "OAuth 登录",
           "logout_button": "退出登录",
