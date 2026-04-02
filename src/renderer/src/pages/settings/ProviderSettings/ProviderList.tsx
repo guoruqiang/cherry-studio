@@ -57,7 +57,7 @@ const ProviderList: FC<ProviderListProps> = ({ isOnboarding = false }) => {
     VISIBLE_PROVIDER_IDS.includes(provider.id as (typeof VISIBLE_PROVIDER_IDS)[number])
   )
   const { setTimeoutTimer } = useTimer()
-  const [selectedProvider, _setSelectedProvider] = useState<Provider>(visibleProviders[0])
+  const [selectedProvider, _setSelectedProvider] = useState<Provider | undefined>(visibleProviders[0])
   const { t } = useTranslation()
   const [searchText, setSearchText] = useState<string>('')
   const [dragging, setDragging] = useState(false)
@@ -67,9 +67,15 @@ const ProviderList: FC<ProviderListProps> = ({ isOnboarding = false }) => {
 
   const { data: isOvmsSupported } = useSWRImmutable('ovms/isSupported', getIsOvmsSupported)
 
-  const setSelectedProvider = useCallback((provider: Provider) => {
+  const setSelectedProvider = useCallback((provider?: Provider) => {
     startTransition(() => _setSelectedProvider(provider))
   }, [])
+
+  useEffect(() => {
+    if (!selectedProvider || !visibleProviders.some((provider) => provider.id === selectedProvider.id)) {
+      setSelectedProvider(visibleProviders[0])
+    }
+  }, [selectedProvider, setSelectedProvider, visibleProviders])
 
   useEffect(() => {
     const loadAllLogos = async () => {
@@ -251,7 +257,7 @@ const ProviderList: FC<ProviderListProps> = ({ isOnboarding = false }) => {
               }
             }
 
-            setSelectedProvider(visibleProviders.filter((p) => isSystemProvider(p))[0])
+            setSelectedProvider(visibleProviders.filter((p) => isSystemProvider(p))[0] || visibleProviders[0])
             removeProvider(provider)
           }
         })
@@ -406,7 +412,9 @@ const ProviderList: FC<ProviderListProps> = ({ isOnboarding = false }) => {
           <div />
         </AddButtonWrapper>
       </ProviderListContainer>
-      <ProviderSetting providerId={selectedProvider.id} key={selectedProvider.id} isOnboarding={isOnboarding} />
+      {selectedProvider && (
+        <ProviderSetting providerId={selectedProvider.id} key={selectedProvider.id} isOnboarding={isOnboarding} />
+      )}
     </Container>
   )
 }

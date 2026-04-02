@@ -22,7 +22,11 @@ import {
   toggleShowAssistants,
   toggleShowTopics
 } from '@renderer/store/settings'
-import type { AssistantsSortType } from '@renderer/types'
+import type { AssistantsSortType, Provider } from '@renderer/types'
+
+function isValidProvider(provider: Provider | null | undefined): provider is Provider {
+  return !!provider && typeof provider.id === 'string' && provider.id.length > 0 && Array.isArray(provider.models)
+}
 
 export function useShowAssistants() {
   const showAssistants = useAppSelector((state) => state.settings.showAssistants)
@@ -57,5 +61,5 @@ export function useAssistantsTabSortType() {
 }
 
 export function getStoreProviders() {
-  return store.getState().llm.providers
+  return store.getState().llm.providers.filter(isValidProvider)
 }

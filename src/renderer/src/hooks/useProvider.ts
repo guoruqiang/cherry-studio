@@ -19,6 +19,10 @@ import { useCallback, useMemo } from 'react'
 
 import { useDefaultModel } from './useAssistant'
 
+function isValidProvider(provider: Provider | null | undefined): provider is Provider {
+  return !!provider && typeof provider.id === 'string' && provider.id.length > 0 && Array.isArray(provider.models)
+}
+
 /**
  * Normalizes provider apiHost by removing trailing slashes.
  * This ensures consistent URL concatenation across the application.
@@ -26,11 +30,13 @@ import { useDefaultModel } from './useAssistant'
 function normalizeProvider<T extends Provider>(provider: T): T {
   return {
     ...provider,
-    apiHost: withoutTrailingSlash(provider.apiHost)
+    apiHost: withoutTrailingSlash(provider.apiHost || '')
   }
 }
 
-const selectProviders = (state: RootState) => state.llm.providers
+const selectProviders = createSelector([(state: RootState) => state.llm.providers], (providers) =>
+  (providers || []).filter(isValidProvider)
+)
 
 const selectEnabledProviders = createSelector(selectProviders, (providers) =>
   providers.map(normalizeProvider).filter((p) => p.enabled)

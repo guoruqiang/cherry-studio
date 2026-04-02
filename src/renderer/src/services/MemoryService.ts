@@ -209,12 +209,18 @@ class MemoryService {
 
       const memoryConfig = selectMemoryConfig(store.getState())
       const embeddingModel = memoryConfig.embeddingModel
+      const resolvedEmbeddingModel = embeddingModel ? getModel(embeddingModel.id, embeddingModel.provider) : undefined
+
+      if (!resolvedEmbeddingModel) {
+        logger.info('Skipping memory config update because the embedding model is not configured or is no longer valid')
+        return
+      }
 
       // Get knowledge base params for memory
       const { embedApiClient: embeddingApiClient } = getKnowledgeBaseParams({
         id: 'memory',
         name: 'Memory',
-        model: getModel(embeddingModel?.id, embeddingModel?.provider),
+        model: resolvedEmbeddingModel,
         dimensions: memoryConfig.embeddingDimensions,
         items: [],
         created_at: now(),

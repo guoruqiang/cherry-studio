@@ -38,7 +38,7 @@ import { DEFAULT_SIDEBAR_ICONS } from '@renderer/config/sidebar'
 import db from '@renderer/databases'
 import { getModel } from '@renderer/hooks/useModel'
 import i18n from '@renderer/i18n'
-import { DEFAULT_ASSISTANT_SETTINGS } from '@renderer/services/AssistantService'
+import { DEFAULT_ASSISTANT_SETTINGS, getDefaultAssistant, getDefaultTopic } from '@renderer/services/AssistantService'
 import { defaultPreprocessProviders } from '@renderer/store/preprocess'
 import type {
   Assistant,
@@ -46,6 +46,7 @@ import type {
   Model,
   Provider,
   ProviderApiOptions,
+  Topic,
   TranslateLanguageCode,
   WebSearchProvider
 } from '@renderer/types'
@@ -58,20 +59,135 @@ import {
 } from '@renderer/utils/provider'
 import { API_SERVER_DEFAULTS } from '@shared/config/constant'
 import { defaultByPassRules, UpgradeChannel } from '@shared/config/constant'
-import { isEmpty } from 'lodash'
+import { cloneDeep, isEmpty, uniqBy } from 'lodash'
 import { createMigrate } from 'redux-persist'
 
 import type { RootState } from '.'
+import assistantsReducer from './assistants'
+import backupReducer from './backup'
+import codeToolsReducer from './codeTools'
+import copilotReducer from './copilot'
 import { DEFAULT_TOOL_ORDER, DEFAULT_TOOL_ORDER_BY_SCOPE } from './inputTools'
+import inputToolsReducer from './inputTools'
+import knowledgeReducer from './knowledge'
 import { initialState as llmInitialState, moveProvider } from './llm'
 import { mcpSlice } from './mcp'
+import { initialState as memoryInitialState } from './memory'
+import minappsReducer from './minapps'
 import { initialState as notesInitialState } from './note'
+import nutstoreReducer from './nutstore'
+import ocrReducer from './ocr'
+import openclawReducer from './openclaw'
+import paintingsReducer from './paintings'
+import preprocessReducer from './preprocess'
 import { defaultActionItems } from './selectionStore'
+import selectionStoreReducer from './selectionStore'
 import { initialState as settingsInitialState } from './settings'
 import { initialState as shortcutsInitialState } from './shortcuts'
+import tabsReducer from './tabs'
+import translateReducer from './translate'
 import { defaultWebSearchProviders } from './websearch'
+import { initialState as websearchInitialState } from './websearch'
 
 const logger = loggerService.withContext('Migrate')
+
+function getInitialSliceState<T>(reducer: (state: T | undefined, action: { type: string }) => T): T {
+  return cloneDeep(reducer(undefined, { type: '@@INIT' }))
+}
+
+function normalizeTopicForHistory(topic: unknown, assistantId: string): Topic | null {
+  if (!topic || typeof topic !== 'object') {
+    return null
+  }
+
+  const topicRecord = topic as Partial<Topic>
+  const topicId = typeof topicRecord.id === 'string' && topicRecord.id ? topicRecord.id : uuid()
+
+  return {
+    id: topicId,
+    assistantId,
+    type: topicRecord.type,
+    name: topicRecord.name || i18n.t('chat.default.topic.name'),
+    createdAt: topicRecord.createdAt || new Date().toISOString(),
+    updatedAt: topicRecord.updatedAt || topicRecord.createdAt || new Date().toISOString(),
+    messages: [],
+    pinned: topicRecord.pinned,
+    isNameManuallyEdited: topicRecord.isNameManuallyEdited
+  }
+}
+
+function sanitizeAssistantForHistory(assistant: unknown): Assistant | null {
+  if (!assistant || typeof assistant !== 'object') {
+    return null
+  }
+
+  const assistantRecord = assistant as Partial<Assistant>
+  const assistantId = typeof assistantRecord.id === 'string' && assistantRecord.id ? assistantRecord.id : uuid()
+  const sanitizedTopics: Topic[] =
+    assistantRecord.topics
+      ?.map((topic) => normalizeTopicForHistory(topic, assistantId))
+      .filter((topic): topic is Topic => topic !== null) || []
+
+  return {
+    ...getDefaultAssistant(),
+    id: assistantId,
+    type: assistantRecord.type || 'assistant',
+    name: assistantRecord.name || i18n.t('chat.default.name'),
+    emoji: assistantRecord.emoji || getLeadingEmoji(assistantRecord.name || '') || '😀',
+    description: assistantRecord.description,
+    topics: sanitizedTopics.length > 0 ? sanitizedTopics : [getDefaultTopic(assistantId)]
+  }
+}
+
+export function resetStateButKeepChatHistory(state: RootState): RootState {
+  const defaultAssistant = getDefaultAssistant()
+  const assistantCandidates = uniqBy(
+    [state.assistants?.defaultAssistant, ...(state.assistants?.assistants || [])].filter(Boolean),
+    'id'
+  )
+  const preservedAssistants = assistantCandidates
+    .map((assistant) => sanitizeAssistantForHistory(assistant))
+    .filter((assistant): assistant is Assistant => !!assistant)
+
+  try {
+    localStorage.removeItem('memory_currentUserId')
+  } catch (error) {
+    logger.warn('Failed to clear memory_currentUserId during migrate 207', error as Error)
+  }
+
+  return {
+    ...state,
+    assistants: {
+      ...getInitialSliceState(assistantsReducer),
+      defaultAssistant,
+      assistants: preservedAssistants.length > 0 ? preservedAssistants : [defaultAssistant]
+    },
+    backup: getInitialSliceState(backupReducer),
+    codeTools: getInitialSliceState(codeToolsReducer),
+    copilot: getInitialSliceState(copilotReducer),
+    inputTools: getInitialSliceState(inputToolsReducer),
+    knowledge: getInitialSliceState(knowledgeReducer),
+    llm: cloneDeep(llmInitialState),
+    mcp: cloneDeep(mcpSlice.getInitialState()),
+    memory: {
+      ...cloneDeep(memoryInitialState),
+      currentUserId: 'default-user'
+    },
+    minapps: getInitialSliceState(minappsReducer),
+    note: cloneDeep(notesInitialState),
+    nutstore: getInitialSliceState(nutstoreReducer),
+    ocr: getInitialSliceState(ocrReducer),
+    openclaw: getInitialSliceState(openclawReducer),
+    paintings: getInitialSliceState(paintingsReducer),
+    preprocess: getInitialSliceState(preprocessReducer),
+    selectionStore: getInitialSliceState(selectionStoreReducer),
+    settings: cloneDeep(settingsInitialState),
+    shortcuts: cloneDeep(shortcutsInitialState),
+    tabs: getInitialSliceState(tabsReducer),
+    translate: getInitialSliceState(translateReducer),
+    websearch: cloneDeep(websearchInitialState)
+  }
+}
 
 // remove logo base64 data to reduce the size of the state
 function removeMiniAppIconsFromState(state: RootState) {
@@ -3427,34 +3543,9 @@ const migrateConfig = {
   },
   '207': (state: RootState) => {
     try {
-      const shouldReplaceOldDefault = (model?: Model) =>
-        !!model && (model.provider === 'cherryai' || (model.provider === 'cherryin' && model.id === 'qwen'))
-
-      const replaceAssistantModel = (model?: Model) => {
-        if (!model) {
-          return model
-        }
-
-        if (!shouldReplaceOldDefault(model)) {
-          return model
-        }
-
-        return nwafuerDefaultModel
-      }
-
-      state.assistants.defaultAssistant.model = replaceAssistantModel(state.assistants.defaultAssistant.model)
-      state.assistants.defaultAssistant.defaultModel = replaceAssistantModel(
-        state.assistants.defaultAssistant.defaultModel
-      )
-
-      state.assistants.assistants = state.assistants.assistants.map((assistant) => ({
-        ...assistant,
-        model: replaceAssistantModel(assistant.model),
-        defaultModel: replaceAssistantModel(assistant.defaultModel)
-      }))
-
+      const migratedState = resetStateButKeepChatHistory(state)
       logger.info('migrate 207 success')
-      return state
+      return migratedState
     } catch (error) {
       logger.error('migrate 207 error', error as Error)
       return state
