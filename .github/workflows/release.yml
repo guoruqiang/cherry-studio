@@ -7,16 +7,6 @@ on:
         description: "Release tag (e.g. v1.0.0)"
         required: true
         default: "v1.0.0"
-      platform:
-        description: "Build platform"
-        required: true
-        default: "all"
-        type: choice
-        options:
-          - all
-          - windows
-          - mac
-          - linux
   push:
     tags:
       - v*.*.*
@@ -30,21 +20,14 @@ jobs:
 
     strategy:
       matrix:
-        os: ${{ fromJSON(
-          github.event_name == 'push' && '["macos-latest", "windows-latest", "ubuntu-latest"]' ||
-          github.event.inputs.platform == 'all' && '["macos-latest", "windows-latest", "ubuntu-latest"]' ||
-          github.event.inputs.platform == 'linux' && '["ubuntu-latest"]' ||
-          github.event.inputs.platform == 'windows' && '["windows-latest"]' ||
-          github.event.inputs.platform == 'mac' && '["macos-latest"]' ||
-          '["macos-latest", "windows-latest", "ubuntu-latest"]'
-          ) }}
+        os: [macos-latest, windows-latest, ubuntu-latest]
       fail-fast: false
 
     steps:
       - name: Check out Git repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@v5
         with:
-          fetch-depth: 0
+          ref: main
 
       - name: Get release tag
         id: get-tag
@@ -66,70 +49,66 @@ jobs:
       - name: Install Node.js
         uses: actions/setup-node@v6
         with:
-          node-version-file: '.node-version'
+          node-version: 22
 
       - name: macos-latest dependencies fix
         if: matrix.os == 'macos-latest'
         run: |
           brew install python-setuptools
 
-      - name: Install pnpm
-        uses: pnpm/action-setup@v5
+      - name: Install corepack
+        run: corepack enable && corepack prepare yarn@4.9.1 --activate
 
-      - name: Get pnpm store directory
-        id: pnpm-cache
-        shell: bash
-        run: echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_OUTPUT
+      - name: Get yarn cache directory path
+        id: yarn-cache-dir-path
+        run: echo "dir=$(yarn config get cacheFolder)" >> $GITHUB_OUTPUT
 
-      - name: Cache pnpm dependencies
-        uses: actions/cache@v5
+      - name: Cache yarn dependencies
+        uses: actions/cache@v4
         with:
-          path: ${{ steps.pnpm-cache.outputs.STORE_PATH }}
-          key: ${{ runner.os }}-pnpm-${{ hashFiles('**/pnpm-lock.yaml') }}
+          path: |
+            ${{ steps.yarn-cache-dir-path.outputs.dir }}
+            node_modules
+          key: ${{ runner.os }}-yarn-${{ hashFiles('**/yarn.lock') }}
           restore-keys: |
-            ${{ runner.os }}-pnpm-
+            ${{ runner.os }}-yarn-
 
       - name: Install Dependencies
-        run: pnpm install
+        run: yarn install
 
       - name: Build Linux
         if: matrix.os == 'ubuntu-latest'
         run: |
-          sudo apt-get install -y rpm libevdev-dev libxtst-dev libx11-dev libxfixes-dev libwayland-dev
-          pnpm build:linux
+          sudo apt-get install -y rpm
+          yarn build:linux
 
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NODE_OPTIONS: --max-old-space-size=8192
-          MAIN_VITE_CHERRYAI_CLIENT_SECRET: ${{ secrets.MAIN_VITE_CHERRYAI_CLIENT_SECRET }}
-          MAIN_VITE_MINERU_API_KEY: ${{ secrets.MAIN_VITE_MINERU_API_KEY }}
-          RENDERER_VITE_AIHUBMIX_SECRET: ${{ secrets.RENDERER_VITE_AIHUBMIX_SECRET }}
-          RENDERER_VITE_PPIO_APP_SECRET: ${{ secrets.RENDERER_VITE_PPIO_APP_SECRET }}
+          MAIN_VITE_CHERRYIN_CLIENT_SECRET: ${{ secrets.MAIN_VITE_CHERRYIN_CLIENT_SECRET }}
+          MAIN_VITE_MINERU_API_KEY: ${{ vars.MAIN_VITE_MINERU_API_KEY }}
+          RENDERER_VITE_AIHUBMIX_SECRET: ${{ vars.RENDERER_VITE_AIHUBMIX_SECRET }}
 
       - name: Build Mac
         if: matrix.os == 'macos-latest'
         run: |
           sudo -H pip install setuptools
-          pnpm build:mac
+          yarn build:mac
         env:
+          RENDERER_VITE_AIHUBMIX_SECRET: ${{ vars.RENDERER_VITE_AIHUBMIX_SECRET }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NODE_OPTIONS: --max-old-space-size=8192
-          MAIN_VITE_CHERRYAI_CLIENT_SECRET: ${{ secrets.MAIN_VITE_CHERRYAI_CLIENT_SECRET }}
-          MAIN_VITE_MINERU_API_KEY: ${{ secrets.MAIN_VITE_MINERU_API_KEY }}
-          RENDERER_VITE_AIHUBMIX_SECRET: ${{ secrets.RENDERER_VITE_AIHUBMIX_SECRET }}
-          RENDERER_VITE_PPIO_APP_SECRET: ${{ secrets.RENDERER_VITE_PPIO_APP_SECRET }}
 
       - name: Build Windows
         if: matrix.os == 'windows-latest'
         run: |
-          pnpm build:win
+          yarn build:win
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NODE_OPTIONS: --max-old-space-size=8192
-          MAIN_VITE_CHERRYAI_CLIENT_SECRET: ${{ secrets.MAIN_VITE_CHERRYAI_CLIENT_SECRET }}
-          MAIN_VITE_MINERU_API_KEY: ${{ secrets.MAIN_VITE_MINERU_API_KEY }}
-          RENDERER_VITE_AIHUBMIX_SECRET: ${{ secrets.RENDERER_VITE_AIHUBMIX_SECRET }}
-          RENDERER_VITE_PPIO_APP_SECRET: ${{ secrets.RENDERER_VITE_PPIO_APP_SECRET }}
+          MAIN_VITE_CHERRYIN_CLIENT_SECRET: ${{ secrets.MAIN_VITE_CHERRYIN_CLIENT_SECRET }}
+          MAIN_VITE_MINERU_API_KEY: ${{ vars.MAIN_VITE_MINERU_API_KEY }}
+          RENDERER_VITE_AIHUBMIX_SECRET: ${{ vars.RENDERER_VITE_AIHUBMIX_SECRET }}
 
       - name: Release
         uses: ncipollo/release-action@v1
