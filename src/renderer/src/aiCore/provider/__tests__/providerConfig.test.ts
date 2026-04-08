@@ -374,7 +374,7 @@ describe('formatProviderApiHost', () => {
   })
 
   describe('Azure OpenAI provider', () => {
-    it('strips /v1 and appends /openai', () => {
+    it('normalizes apiHost without appending version (deferred to build phase)', () => {
       const provider = makeProvider({
         id: 'azure-openai',
         type: 'azure-openai',
@@ -383,8 +383,20 @@ describe('formatProviderApiHost', () => {
 
       const result = formatProviderApiHost(provider)
 
-      // formatAzureOpenAIApiHost strips /v1 and /openai then re-appends /openai
+      // Azure now defers /openai suffix to buildAzureConfig; formatProviderApiHost only normalizes
       expect(result.apiHost).toBe('https://example.openai.azure.com/openai')
+    })
+
+    it('does not append /v1 to bare Azure host', () => {
+      const provider = makeProvider({
+        id: 'azure-openai',
+        type: 'azure-openai',
+        apiHost: 'https://example.openai.azure.com'
+      })
+
+      const result = formatProviderApiHost(provider)
+
+      expect(result.apiHost).toBe('https://example.openai.azure.com')
     })
   })
 
