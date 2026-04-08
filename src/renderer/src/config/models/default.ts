@@ -18,7 +18,8 @@ export const nwafuerTranslateModel: Model = {
   id: 'deepseek-chat',
   name: 'deepseek-chat',
   provider: 'cherryin',
-  group: 'DeepSeek'
+  group: 'DeepSeek',
+  endpoint_type: 'openai'
 }
 
 export const nwafuerReasonerModel: Model = {
