@@ -1,4 +1,4 @@
-import { adaptProvider } from '@renderer/aiCore/provider/providerConfig'
+import { adaptProvider, normalizeCherryInOpenAIBaseURL } from '@renderer/aiCore/provider/providerConfig'
 import OpenAIAlert from '@renderer/components/Alert/OpenAIAlert'
 import { showErrorDetailPopup } from '@renderer/components/ErrorDetailModal'
 import { LoadingIcon } from '@renderer/components/Icons'
@@ -330,7 +330,9 @@ const ProviderSetting: FC<Props> = ({ providerId, isOnboarding = false }) => {
   }, [configuredApiHost, apiHost])
 
   const hostPreview = () => {
-    const formattedApiHost = adaptProvider({ provider: { ...provider, apiHost } }).apiHost
+    const formattedApiHost = isCherryIN
+      ? normalizeCherryInOpenAIBaseURL(apiHost)
+      : adaptProvider({ provider: { ...provider, apiHost } }).apiHost
 
     if (isOllamaProvider(provider)) {
       return formattedApiHost + '/chat'

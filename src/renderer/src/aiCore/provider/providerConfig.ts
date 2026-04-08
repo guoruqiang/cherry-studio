@@ -30,7 +30,7 @@ import {
   isSupportStreamOptionsProvider,
   isVertexProvider
 } from '@renderer/utils/provider'
-import { defaultAppHeaders } from '@shared/utils'
+import { defaultAppHeaders, withoutTrailingApiVersion } from '@shared/utils'
 import { cloneDeep, isEmpty } from 'lodash'
 
 import type { ProviderConfig } from '../types'
@@ -249,17 +249,36 @@ function buildVertexConfig(
   } as ProviderConfig<'google-vertex'> | ProviderConfig<'google-vertex-anthropic'>
 }
 
+function normalizeEndpointBaseURL(apiHost: string, apiVersion: string = 'v1'): string {
+  const normalizedHost = apiHost.endsWith('#') ? apiHost : `${apiHost}#`
+  const { baseURL } = routeToEndpoint(normalizedHost)
+
+  return formatApiHost(baseURL, true, apiVersion)
+}
+
+export function normalizeCherryInOpenAIBaseURL(apiHost: string): string {
+  return normalizeEndpointBaseURL(apiHost)
+}
+
+function normalizeCherryInGeminiBaseURL(apiHost: string): string {
+  return formatApiHost(withoutTrailingApiVersion(normalizeCherryInOpenAIBaseURL(apiHost)), true, 'v1beta/models')
+}
+
 function buildCherryinConfig(ctx: BuilderContext): ProviderConfig<'cherryin'> {
   const cherryinProvider = getProviderById(SystemProviderIds.cherryin)
+  const baseURL = normalizeCherryInOpenAIBaseURL(ctx.baseConfig.baseURL)
 
   return {
     providerId: 'cherryin',
     endpoint: ctx.endpoint,
     providerSettings: {
       ...ctx.baseConfig,
+      baseURL,
       endpointType: ctx.model.endpoint_type,
-      anthropicBaseURL: cherryinProvider ? cherryinProvider.anthropicApiHost + '/v1' : undefined,
-      geminiBaseURL: cherryinProvider ? cherryinProvider.apiHost + '/v1beta/models' : undefined,
+      anthropicBaseURL: cherryinProvider?.anthropicApiHost
+        ? normalizeCherryInOpenAIBaseURL(cherryinProvider.anthropicApiHost)
+        : undefined,
+      geminiBaseURL: cherryinProvider?.apiHost ? normalizeCherryInGeminiBaseURL(cherryinProvider.apiHost) : undefined,
       headers: { ...defaultAppHeaders(), ...ctx.actualProvider.extra_headers }
     }
   }

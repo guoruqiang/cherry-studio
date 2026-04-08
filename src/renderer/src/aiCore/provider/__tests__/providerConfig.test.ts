@@ -790,7 +790,7 @@ describe('providerToAiSdkConfig', () => {
   })
 
   describe('Cherryin builder', () => {
-    it('includes anthropic and gemini base URLs from cherryin provider config', async () => {
+    it('normalizes cherryin base URLs before building provider settings', async () => {
       const cherryinProvider = makeProvider({
         id: 'cherryin',
         type: 'openai',
@@ -804,8 +804,31 @@ describe('providerToAiSdkConfig', () => {
 
       expect(config.providerId).toBe('cherryin')
       const settings = config.providerSettings as CherryInProviderSettings
+      expect(settings.baseURL).toBe('https://api.cherryin.com/v1')
       expect(settings.anthropicBaseURL).toBe('https://anthropic.cherryin.com/v1')
       expect(settings.geminiBaseURL).toBe('https://api.cherryin.com/v1beta/models')
+    })
+
+    it('strips endpoint suffixes before appending the openai api version', async () => {
+      const cherryinProvider = makeProvider({
+        id: 'cherryin',
+        type: 'openai',
+        apiHost: 'https://api.nwafu-ai.cn',
+        anthropicApiHost: 'https://api.nwafu-ai.cn'
+      })
+
+      vi.mocked(getProviderById).mockReturnValue(cherryinProvider)
+
+      const config = await providerToAiSdkConfig(
+        {
+          ...cherryinProvider,
+          apiHost: 'https://api.nwafu-ai.cn/responses'
+        },
+        makeModel('gpt-5.4', 'cherryin', { endpoint_type: 'openai-response' })
+      )
+
+      const settings = config.providerSettings as CherryInProviderSettings
+      expect(settings.baseURL).toBe('https://api.nwafu-ai.cn/v1')
     })
   })
 
@@ -910,7 +933,7 @@ describe('providerToAiSdkConfig', () => {
         makeModel('gpt-4', provider.id)
       )) as ProviderConfig<'openai-compatible'>
 
-      const settings = config.providerSettings as OpenAICompatibleProviderSettings
+      const settings = config.providerSettings
       expect(settings.headers).toBeDefined()
       expect(settings.headers!['HTTP-Referer']).toBe('https://cherry-ai.com')
       expect(settings.headers!['X-Title']).toBe('Cherry Studio')
@@ -929,7 +952,7 @@ describe('providerToAiSdkConfig', () => {
         makeModel('gpt-4', provider.id)
       )) as ProviderConfig<'openai-compatible'>
 
-      const settings = config.providerSettings as OpenAICompatibleProviderSettings
+      const settings = config.providerSettings
       expect(settings.headers).toBeDefined()
       expect(settings.headers!['X-Custom']).toBe('custom-value')
     })
