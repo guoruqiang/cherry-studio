@@ -2,7 +2,8 @@
  * PDF Compatibility Plugin
  *
  * Converts PDF FileParts to TextParts for providers that don't support native PDF input.
- * Extracts text directly from the FilePart's base64 data using pdf-parse.
+ * Extraction is delegated to the preload/main-process PDF service so renderer
+ * code never pulls in Node-only PDF parsing dependencies.
  */
 import type { LanguageModelV3FilePart, LanguageModelV3Message } from '@ai-sdk/provider'
 import { definePlugin } from '@cherrystudio/ai-core/core/plugins'
@@ -10,7 +11,6 @@ import { loggerService } from '@logger'
 import { isAnthropicModel, isGeminiModel } from '@renderer/config/models'
 import { isOpenAILLMModel } from '@renderer/config/models/openai'
 import type { Model, Provider, ProviderType } from '@renderer/types'
-import { extractPdfText } from '@shared/utils/pdf'
 import type { LanguageModelMiddleware } from 'ai'
 import i18n from 'i18next'
 
@@ -39,7 +39,14 @@ function isPdfFilePart(part: ContentPart): part is LanguageModelV3FilePart & { m
 }
 
 function supportsNativePdf(provider: Provider, model: Model): boolean {
-  // OpenAI, Claude, and Gemini models always support native PDF regardless of provider
+  // Claude models routed through CherryIN/NWAFUER use an OpenAI-compatible
+  // gateway that does not accept native PDF file parts. Force fallback to text
+  // extraction for this specific gateway/model combination.
+  if (provider.id === 'cherryin' && isAnthropicModel(model)) {
+    return false
+  }
+
+  // OpenAI, Claude, and Gemini models otherwise support native PDF regardless of provider
   if (isOpenAILLMModel(model) || isAnthropicModel(model) || isGeminiModel(model)) {
     return true
   }
@@ -85,8 +92,11 @@ function pdfCompatibilityMiddleware(provider: Provider, model: Model): LanguageM
           const fileName = part.filename || 'PDF'
 
           try {
-            const textContent =
-              part.data instanceof URL ? await extractPdfText(part.data) : await window.api.pdf.extractText(part.data)
+            const fileData =
+              part.data instanceof URL
+                ? await fetch(part.data.href).then((response) => response.arrayBuffer())
+                : part.data
+            const textContent = await window.api.pdf.extractText(fileData)
             logger.debug(`Converting PDF FilePart to TextPart for provider ${provider.id} (type: ${provider.type})`)
             newContent.push({ type: 'text', text: `${fileName}\n${textContent.trim()}` })
           } catch (error) {

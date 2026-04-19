@@ -8,10 +8,11 @@ export const qwenModel: Model = {
 }
 
 export const nwafuerDefaultModel: Model = {
-  id: 'gpt-5.4',
-  name: 'GPT 5.4',
+  id: 'deepseek-chat',
+  name: 'deepseek-chat',
   provider: 'cherryin',
-  group: 'GPT-5'
+  group: 'DeepSeek',
+  endpoint_type: 'openai'
 }
 
 export const nwafuerTranslateModel: Model = {
@@ -20,27 +21,6 @@ export const nwafuerTranslateModel: Model = {
   provider: 'cherryin',
   group: 'DeepSeek',
   endpoint_type: 'openai'
-}
-
-export const nwafuerReasonerModel: Model = {
-  id: 'deepseek-reasoner',
-  name: 'deepseek-reasoner',
-  provider: 'cherryin',
-  group: 'DeepSeek'
-}
-
-export const nwafuerGpt5Model: Model = {
-  id: 'gpt-5',
-  name: 'GPT 5',
-  provider: 'cherryin',
-  group: 'GPT-5'
-}
-
-export const nwafuerGpt53CodexModel: Model = {
-  id: 'gpt-5.3-codex',
-  name: 'GPT 5.3 Codex',
-  provider: 'cherryin',
-  group: 'GPT-5'
 }
 
 export const SYSTEM_MODELS: Record<SystemProviderId | 'defaultModel', Model[]> = {
@@ -54,13 +34,7 @@ export const SYSTEM_MODELS: Record<SystemProviderId | 'defaultModel', Model[]> =
     // Default quick assistant model
     nwafuerDefaultModel
   ],
-  cherryin: [
-    nwafuerTranslateModel,
-    nwafuerReasonerModel,
-    nwafuerGpt5Model,
-    nwafuerDefaultModel,
-    nwafuerGpt53CodexModel
-  ],
+  cherryin: [nwafuerTranslateModel, nwafuerDefaultModel],
   vertexai: [],
   sophnet: [],
   '302ai': [

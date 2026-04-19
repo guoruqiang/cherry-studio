@@ -15,17 +15,13 @@ vi.mock('@renderer/config/models/openai', () => ({
   isOpenAILLMModel: vi.fn(() => false)
 }))
 
-const mockExtractPdfText = vi.fn()
-
-vi.mock('@shared/utils/pdf', () => ({
-  extractPdfText: (...args: unknown[]) => mockExtractPdfText(...args)
-}))
+const mockExtractText = vi.fn()
 
 vi.stubGlobal('window', {
   ...globalThis.window,
   api: {
     pdf: {
-      extractText: mockExtractPdfText
+      extractText: mockExtractText
     }
   },
   toast: {
@@ -33,6 +29,8 @@ vi.stubGlobal('window', {
     error: vi.fn()
   }
 })
+
+vi.stubGlobal('fetch', vi.fn())
 
 import { isAnthropicModel, isGeminiModel } from '@renderer/config/models'
 import { isOpenAILLMModel } from '@renderer/config/models/openai'
@@ -97,7 +95,7 @@ describe('pdfCompatibilityPlugin', () => {
 
     const result = await runMiddleware(provider, params)
     expect(result).toEqual(params)
-    expect(mockExtractPdfText).not.toHaveBeenCalled()
+    expect(mockExtractText).not.toHaveBeenCalled()
   })
 
   it('should pass through for Claude model on any provider type', async () => {
@@ -110,7 +108,7 @@ describe('pdfCompatibilityPlugin', () => {
 
     const result = await runMiddleware(provider, params)
     expect(result).toEqual(params)
-    expect(mockExtractPdfText).not.toHaveBeenCalled()
+    expect(mockExtractText).not.toHaveBeenCalled()
   })
 
   it('should pass through for Gemini model on any provider type', async () => {
@@ -123,7 +121,31 @@ describe('pdfCompatibilityPlugin', () => {
 
     const result = await runMiddleware(provider, params)
     expect(result).toEqual(params)
-    expect(mockExtractPdfText).not.toHaveBeenCalled()
+    expect(mockExtractText).not.toHaveBeenCalled()
+  })
+
+  it('should convert PDF for cherryin claude models instead of passing through natively', async () => {
+    vi.mocked(isAnthropicModel).mockReturnValue(true)
+    const provider = makeProvider('cherryin', 'openai')
+    mockExtractText.mockResolvedValue('Extracted PDF content')
+
+    const params = {
+      prompt: [{ role: 'user' as const, content: [makeTextPart('Hello'), makePdfFilePart('report.pdf')] }]
+    } as unknown as LanguageModelV3CallOptions
+
+    const result = await runMiddleware(provider, params, {
+      ...makeModel(),
+      id: 'claude-opus-4-6',
+      provider: 'cherryin'
+    } as Model)
+
+    expect(result.prompt[0]).toMatchObject({
+      role: 'user',
+      content: [
+        { type: 'text', text: 'Hello' },
+        { type: 'text', text: 'report.pdf\nExtracted PDF content' }
+      ]
+    })
   })
 
   it('should pass through unchanged when provider type supports native PDF (openai-response)', async () => {
@@ -135,19 +157,19 @@ describe('pdfCompatibilityPlugin', () => {
 
     const result = await runMiddleware(provider, params)
     expect(result).toEqual(params)
-    expect(mockExtractPdfText).not.toHaveBeenCalled()
+    expect(mockExtractText).not.toHaveBeenCalled()
   })
 
   it('should convert PDF for non-native provider types (new-api, gateway, openai)', async () => {
     const provider = makeProvider('moonshot', 'openai')
-    mockExtractPdfText.mockResolvedValue('Extracted PDF content')
+    mockExtractText.mockResolvedValue('Extracted PDF content')
 
     const params = {
       prompt: [{ role: 'user' as const, content: [makeTextPart('Hello'), makePdfFilePart('report.pdf')] }]
     } as unknown as LanguageModelV3CallOptions
 
     const result = await runMiddleware(provider, params)
-    expect(mockExtractPdfText).toHaveBeenCalledWith('base64pdfdata')
+    expect(mockExtractText).toHaveBeenCalledWith('base64pdfdata')
     expect(result.prompt[0]).toMatchObject({
       role: 'user',
       content: [
@@ -159,14 +181,14 @@ describe('pdfCompatibilityPlugin', () => {
 
   it('should convert PDF FilePart to TextPart for ollama provider', async () => {
     const provider = makeProvider('ollama', 'ollama')
-    mockExtractPdfText.mockResolvedValue('Extracted PDF content')
+    mockExtractText.mockResolvedValue('Extracted PDF content')
 
     const params = {
       prompt: [{ role: 'user' as const, content: [makeTextPart('Hello'), makePdfFilePart('report.pdf')] }]
     } as unknown as LanguageModelV3CallOptions
 
     const result = await runMiddleware(provider, params)
-    expect(mockExtractPdfText).toHaveBeenCalledWith('base64pdfdata')
+    expect(mockExtractText).toHaveBeenCalledWith('base64pdfdata')
     expect(result.prompt[0]).toMatchObject({
       role: 'user',
       content: [
@@ -178,7 +200,7 @@ describe('pdfCompatibilityPlugin', () => {
 
   it('should drop PDF part and warn when text extraction fails', async () => {
     const provider = makeProvider('ollama', 'ollama')
-    mockExtractPdfText.mockRejectedValue(new Error('parse failed'))
+    mockExtractText.mockRejectedValue(new Error('parse failed'))
 
     const params = {
       prompt: [{ role: 'user' as const, content: [makeTextPart('Hello'), makePdfFilePart('broken.pdf')] }]
@@ -205,12 +227,12 @@ describe('pdfCompatibilityPlugin', () => {
       role: 'user',
       content: [{ type: 'text', text: 'Hello' }, imagePart]
     })
-    expect(mockExtractPdfText).not.toHaveBeenCalled()
+    expect(mockExtractText).not.toHaveBeenCalled()
   })
 
   it('should handle mixed content: text + PDF + image — only PDF converted', async () => {
     const provider = makeProvider('ollama', 'ollama')
-    mockExtractPdfText.mockResolvedValue('PDF text content')
+    mockExtractText.mockResolvedValue('PDF text content')
 
     const imagePart = makeImageFilePart()
     const params = {
@@ -221,6 +243,43 @@ describe('pdfCompatibilityPlugin', () => {
     expect(result.prompt[0]).toMatchObject({
       role: 'user',
       content: [{ type: 'text', text: 'Analyze' }, { type: 'text', text: 'doc.pdf\nPDF text content' }, imagePart]
+    })
+  })
+
+  it('should fetch URL PDF data before calling the preload extractor', async () => {
+    const provider = makeProvider('ollama', 'ollama')
+    const fileBuffer = new ArrayBuffer(8)
+    vi.mocked(fetch).mockResolvedValue({
+      arrayBuffer: vi.fn().mockResolvedValue(fileBuffer)
+    } as unknown as Response)
+    mockExtractText.mockResolvedValue('Fetched PDF text')
+
+    const params = {
+      prompt: [
+        {
+          role: 'user' as const,
+          content: [
+            makeTextPart('Analyze'),
+            {
+              type: 'file' as const,
+              data: new URL('https://example.com/report.pdf'),
+              mediaType: 'application/pdf',
+              filename: 'report.pdf'
+            }
+          ]
+        }
+      ]
+    } as unknown as LanguageModelV3CallOptions
+
+    const result = await runMiddleware(provider, params)
+    expect(fetch).toHaveBeenCalledWith('https://example.com/report.pdf')
+    expect(mockExtractText).toHaveBeenCalledWith(fileBuffer)
+    expect(result.prompt[0]).toMatchObject({
+      role: 'user',
+      content: [
+        { type: 'text', text: 'Analyze' },
+        { type: 'text', text: 'report.pdf\nFetched PDF text' }
+      ]
     })
   })
 
