@@ -3636,6 +3636,16 @@ const migrateConfig = {
       logger.error('migrate 211 error', error as Error)
       return state
     }
+  },
+  '212': (state: RootState) => {
+    try {
+      const migratedState = resetStateButKeepChatHistory(state)
+      logger.info('migrate 212 success')
+      return migratedState
+    } catch (error) {
+      logger.error('migrate 212 error', error as Error)
+      return state
+    }
   }
 }
 

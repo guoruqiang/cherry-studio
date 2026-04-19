@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 
 import { resetStateButKeepChatHistory } from '../migrate'
 
-describe('migration 207', () => {
+describe('resetStateButKeepChatHistory', () => {
   it('resets settings-like state while preserving assistant topic history shells', () => {
     const migrated = resetStateButKeepChatHistory({
       assistants: {
