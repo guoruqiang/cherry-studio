@@ -53,16 +53,21 @@ export function createNewApi(options: NewApiProviderSettings = {}): NewApiProvid
   const resolveApiKey = () =>
     loadApiKey({ apiKey: options.apiKey, environmentVariableName: 'NEWAPI_API_KEY', description: 'NewAPI' })
 
-  const authHeaders = (): Record<string, string> => ({
+  const jsonHeaders = (): Record<string, string> => ({
     Authorization: `Bearer ${resolveApiKey()}`,
     'Content-Type': 'application/json',
+    ...options.headers
+  })
+
+  const authHeaders = (): Record<string, string> => ({
+    Authorization: `Bearer ${resolveApiKey()}`,
     ...options.headers
   })
 
   const url = ({ path }: { path: string; modelId: string }) => `${withoutTrailingSlash(baseURL)}${path}`
 
   const createAnthropicModel = (modelId: string) => {
-    const headers = authHeaders()
+    const headers = jsonHeaders()
     return new AnthropicMessagesLanguageModel(modelId, {
       provider: `${NEWAPI_PROVIDER_NAME}.anthropic`,
       baseURL,
@@ -79,7 +84,7 @@ export function createNewApi(options: NewApiProviderSettings = {}): NewApiProvid
   }
 
   const createGeminiModel = (modelId: string) => {
-    const headers = authHeaders()
+    const headers = jsonHeaders()
     return new GoogleGenerativeAILanguageModel(modelId, {
       provider: `${NEWAPI_PROVIDER_NAME}.google`,
       baseURL,
@@ -94,7 +99,7 @@ export function createNewApi(options: NewApiProviderSettings = {}): NewApiProvid
     new OpenAIResponsesLanguageModel(modelId, {
       provider: `${NEWAPI_PROVIDER_NAME}.openai-response`,
       url,
-      headers: authHeaders,
+      headers: jsonHeaders,
       fetch: customFetch
     })
 
@@ -102,7 +107,7 @@ export function createNewApi(options: NewApiProviderSettings = {}): NewApiProvid
     new OpenAICompatibleChatLanguageModel(modelId, {
       provider: `${NEWAPI_PROVIDER_NAME}.chat`,
       url,
-      headers: authHeaders,
+      headers: jsonHeaders,
       fetch: customFetch
     })
 
@@ -131,7 +136,7 @@ export function createNewApi(options: NewApiProviderSettings = {}): NewApiProvid
     new OpenAICompatibleEmbeddingModel(modelId, {
       provider: `${NEWAPI_PROVIDER_NAME}.embedding`,
       url,
-      headers: authHeaders,
+      headers: jsonHeaders,
       fetch: customFetch
     })
 

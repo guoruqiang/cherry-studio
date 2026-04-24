@@ -142,7 +142,10 @@ function sanitizeAssistantForHistory(assistant: unknown): Assistant | null {
 export function resetStateButKeepChatHistory(state: RootState): RootState {
   const defaultAssistant = getDefaultAssistant()
   const assistantCandidates = uniqBy(
-    [state.assistants?.defaultAssistant, ...(state.assistants?.assistants || [])].filter(Boolean),
+    // Prefer persisted assistant entries over the standalone defaultAssistant slice.
+    // Both can share the same `id: 'default'`, but only the assistants list usually
+    // carries the real topic shells that still point at Dexie-backed history.
+    [...(state.assistants?.assistants || []), state.assistants?.defaultAssistant].filter(Boolean),
     'id'
   )
   const preservedAssistants = assistantCandidates

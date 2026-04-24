@@ -546,6 +546,10 @@ describe('streamCallback Integration Tests', () => {
 
   it('should handle image generation flow', async () => {
     const callbacks = createMockCallbacks(mockAssistantMsgId, mockTopicId, mockAssistant, dispatch, getState)
+    const response = {
+      usage: { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 },
+      metrics: { completion_tokens: 0, time_first_token_millsec: 0, time_completion_millsec: 1000 }
+    }
 
     const chunks: Chunk[] = [
       { type: ChunkType.LLM_RESPONSE_CREATED },
@@ -568,7 +572,8 @@ describe('streamCallback Integration Tests', () => {
           ]
         }
       },
-      { type: ChunkType.BLOCK_COMPLETE }
+      { type: ChunkType.LLM_RESPONSE_COMPLETE, response },
+      { type: ChunkType.BLOCK_COMPLETE, response }
     ]
 
     await processChunks(chunks, callbacks)
@@ -581,6 +586,9 @@ describe('streamCallback Integration Tests', () => {
     expect(imageBlock?.file).toEqual(mockSavedFile)
     expect(imageBlock?.url).toBe('file:///mock/path/mock-image-id.png')
     expect(imageBlock?.status).toBe(MessageBlockStatus.SUCCESS)
+
+    const message = state.messages.entities[mockAssistantMsgId]
+    expect(message?.status).toBe(AssistantMessageStatus.SUCCESS)
   })
 
   it('should handle web search flow', async () => {

@@ -101,15 +101,69 @@ describe('resetStateButKeepChatHistory', () => {
     expect(migrated.assistants.tagsOrder).toEqual([])
     expect(migrated.assistants.presets).toEqual([])
     expect(migrated.assistants.assistants).toHaveLength(2)
-    expect(migrated.assistants.assistants[1].id).toBe('legacy-assistant')
-    expect(migrated.assistants.assistants[1].prompt).toBe('')
-    expect(migrated.assistants.assistants[1].model).toBeUndefined()
-    expect(migrated.assistants.assistants[1].topics[0]).toMatchObject({
+    const preservedLegacyAssistant = migrated.assistants.assistants.find(
+      (assistant) => assistant.id === 'legacy-assistant'
+    )
+    expect(preservedLegacyAssistant).toBeDefined()
+    expect(preservedLegacyAssistant?.prompt).toBe('')
+    expect(preservedLegacyAssistant?.model).toBeUndefined()
+    expect(preservedLegacyAssistant?.topics[0]).toMatchObject({
       id: 'topic-1',
       assistantId: 'legacy-assistant',
       name: 'Keep Me',
       pinned: true
     })
-    expect(migrated.assistants.assistants[1].topics[0].messages).toEqual([])
+    expect(preservedLegacyAssistant?.topics[0].messages).toEqual([])
+  })
+
+  it('prefers the persisted default assistant entry when duplicate default ids exist', () => {
+    const migrated = resetStateButKeepChatHistory({
+      assistants: {
+        defaultAssistant: {
+          id: 'default',
+          name: 'Default Assistant',
+          topics: [
+            {
+              id: 'temp-topic',
+              assistantId: 'default',
+              name: 'Temp Topic',
+              createdAt: '2026-04-01T00:00:00.000Z',
+              updatedAt: '2026-04-01T00:00:00.000Z',
+              messages: []
+            }
+          ],
+          type: 'assistant'
+        },
+        assistants: [
+          {
+            id: 'default',
+            name: 'Default Assistant',
+            topics: [
+              {
+                id: 'history-topic',
+                assistantId: 'default',
+                name: 'Keep History',
+                createdAt: '2026-04-02T00:00:00.000Z',
+                updatedAt: '2026-04-03T00:00:00.000Z',
+                messages: [{ id: 'message-1' }],
+                pinned: true
+              }
+            ],
+            type: 'assistant'
+          }
+        ]
+      }
+    } as any)
+
+    expect(migrated.assistants.assistants).toHaveLength(1)
+    expect(migrated.assistants.assistants[0].id).toBe('default')
+    expect(migrated.assistants.assistants[0].topics).toHaveLength(1)
+    expect(migrated.assistants.assistants[0].topics[0]).toMatchObject({
+      id: 'history-topic',
+      assistantId: 'default',
+      name: 'Keep History',
+      pinned: true
+    })
+    expect(migrated.assistants.assistants[0].topics[0].messages).toEqual([])
   })
 })
