@@ -401,16 +401,25 @@ export async function fetchImageGeneration({
       image: { type: imageType, images }
     })
 
+    const response = {
+      usage: { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 },
+      metrics: {
+        completion_tokens: 0,
+        time_first_token_millsec: 0,
+        time_completion_millsec: Date.now() - startTime
+      }
+    }
+
+    // Dedicated image generation should follow the same completion contract as
+    // streamed chat so the assistant message can transition out of loading.
+    onChunkReceived({
+      type: ChunkType.BLOCK_COMPLETE,
+      response
+    })
+
     onChunkReceived({
       type: ChunkType.LLM_RESPONSE_COMPLETE,
-      response: {
-        usage: { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 },
-        metrics: {
-          completion_tokens: 0,
-          time_first_token_millsec: 0,
-          time_completion_millsec: Date.now() - startTime
-        }
-      }
+      response
     })
   } catch (error) {
     onChunkReceived({ type: ChunkType.ERROR, error: error as Error })

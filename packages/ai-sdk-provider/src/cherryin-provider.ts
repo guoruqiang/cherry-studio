@@ -287,7 +287,7 @@ export const createCherryIn = (options: CherryInProviderSettings = {}): CherryIn
       provider: `${CHERRYIN_PROVIDER_NAME}.image`,
       url,
       headers: () => ({
-        ...getJsonHeaders(),
+        ...getAuthHeaders(),
         ...settings.headers
       }),
       fetch
