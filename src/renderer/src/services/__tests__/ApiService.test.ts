@@ -1,5 +1,6 @@
 import type { Assistant } from '@renderer/types'
 import { ChunkType } from '@renderer/types/chunk'
+import { findImageBlocks } from '@renderer/utils/messageUtils/find'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const { mockGenerateImage, mockEditImage } = vi.hoisted(() => ({
@@ -150,12 +151,14 @@ vi.mock('../KnowledgeService', () => ({
 }))
 
 import { fetchImageGeneration } from '../ApiService'
+import FileManager from '../FileManager'
 
 describe('ApiService.fetchImageGeneration', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockGenerateImage.mockResolvedValue(['https://example.com/dog.png'])
     mockEditImage.mockResolvedValue(['https://example.com/edited-dog.png'])
+    vi.mocked(findImageBlocks).mockReturnValue([])
   })
 
   it('emits BLOCK_COMPLETE so dedicated image generations can leave loading state', async () => {
@@ -197,5 +200,56 @@ describe('ApiService.fetchImageGeneration', () => {
       usage: { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 }
     })
     expect(chunks[4]?.response).toEqual(chunks[3]?.response)
+  })
+
+  it('prefers assistant image files over file URLs when editing generated images', async () => {
+    const assistant = {
+      id: 'assistant-1',
+      name: 'NWAFUER',
+      prompt: '',
+      topics: [],
+      type: 'assistant',
+      model: {
+        id: 'gpt-image-2',
+        name: 'gpt-image-2',
+        provider: 'nwafuer',
+        group: 'images'
+      }
+    } as Assistant
+
+    const savedImageFile = {
+      id: 'generated-image',
+      name: 'generated-image.png',
+      origin_name: 'generated-image.png',
+      path: '/mock/path/generated-image.png',
+      size: 100,
+      ext: '.png',
+      type: 'image',
+      created_at: new Date().toISOString(),
+      count: 1
+    } as const
+
+    vi.mocked(findImageBlocks).mockImplementation((message: any) => {
+      if (message.id === 'assistant-previous') {
+        return [{ file: savedImageFile, url: 'file:///mock/path/generated-image.png' }] as any
+      }
+      return []
+    })
+    vi.mocked(FileManager.readBase64File).mockResolvedValue('AAAABBBB')
+
+    await fetchImageGeneration({
+      messages: [{ id: 'assistant-previous', role: 'assistant' } as any, { id: 'user-1', role: 'user' } as any],
+      assistant,
+      onChunkReceived: vi.fn()
+    })
+
+    expect(FileManager.readBase64File).toHaveBeenCalledWith(savedImageFile)
+    expect(mockEditImage).toHaveBeenCalledWith({
+      model: 'gpt-image-2',
+      prompt: 'draw a dog',
+      inputImages: ['data:image/png;base64,AAAABBBB'],
+      imageSize: '1024x1024'
+    })
+    expect(mockGenerateImage).not.toHaveBeenCalled()
   })
 })

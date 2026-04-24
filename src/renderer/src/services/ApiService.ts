@@ -1,5 +1,5 @@
 /**
- * 职责：提供原子化的、无状态的API调用函数
+ * 鑱岃矗锛氭彁渚涘師瀛愬寲鐨勩€佹棤鐘舵€佺殑API璋冪敤鍑芥暟
  */
 import { loggerService } from '@logger'
 import { buildStreamTextParams } from '@renderer/aiCore/prepareParams'
@@ -10,7 +10,7 @@ import { getStoreSetting } from '@renderer/hooks/useSettings'
 import i18n from '@renderer/i18n'
 import store from '@renderer/store'
 import { hubMCPServer } from '@renderer/store/mcp'
-import type { Assistant, MCPServer, MCPTool, Model, Provider } from '@renderer/types'
+import type { Assistant, FileMetadata, MCPServer, MCPTool, Model, Provider } from '@renderer/types'
 import { type FetchChatCompletionParams, getEffectiveMcpMode, isSystemProvider } from '@renderer/types'
 import type { StreamTextParams } from '@renderer/types/aiCoreTypes'
 import { type Chunk, ChunkType } from '@renderer/types/chunk'
@@ -26,6 +26,7 @@ import { findFileBlocks, findImageBlocks, getMainTextContent } from '@renderer/u
 import { containsSupportedVariables, replacePromptVariables } from '@renderer/utils/prompt'
 import { NOT_SUPPORT_API_KEY_PROVIDER_TYPES, NOT_SUPPORT_API_KEY_PROVIDERS } from '@renderer/utils/provider'
 import { isEmpty, takeRight } from 'lodash'
+import mime from 'mime'
 
 import type { AiProviderConfig } from '../aiCore'
 import { AiProvider } from '../aiCore'
@@ -51,8 +52,7 @@ import type { StreamProcessorCallbacks } from './StreamProcessingService'
 // } from './MessagesService'
 // import WebSearchService from './WebSearchService'
 
-// FIXME: 这里太多重复逻辑，需要重构
-
+// FIXME: 杩欓噷澶閲嶅閫昏緫锛岄渶瑕侀噸鏋?
 const logger = loggerService.withContext('ApiService')
 const SUMMARY_REQUEST_TIMEOUT_MS = 15_000
 
@@ -135,11 +135,9 @@ export async function fetchMcpTools(assistant: Assistant) {
 }
 
 /**
- * 将用户消息转换为LLM可以理解的格式并发送请求
- * @param request - 包含消息内容和助手信息的请求对象
- * @param onChunkReceived - 接收流式响应数据的回调函数
- */
-// 目前先按照函数来写,后续如果有需要到class的地方就改回来
+ * 灏嗙敤鎴锋秷鎭浆鎹负LLM鍙互鐞嗚В鐨勬牸寮忓苟鍙戦€佽姹? * @param request - 鍖呭惈娑堟伅鍐呭鍜屽姪鎵嬩俊鎭殑璇锋眰瀵硅薄
+ * @param onChunkReceived - 鎺ユ敹娴佸紡鍝嶅簲鏁版嵁鐨勫洖璋冨嚱鏁? */
+// 鐩墠鍏堟寜鐓у嚱鏁版潵鍐?鍚庣画濡傛灉鏈夐渶瑕佸埌class鐨勫湴鏂瑰氨鏀瑰洖鏉?export async function transformMessagesAndFetch(
 export async function transformMessagesAndFetch(
   request: {
     messages: Message[]
@@ -147,7 +145,7 @@ export async function transformMessagesAndFetch(
     blockManager: BlockManager
     assistantMsgId: string
     callbacks: StreamProcessorCallbacks
-    topicId?: string // 添加 topicId 用于 trace
+    topicId?: string // 娣诲姞 topicId 鐢ㄤ簬 trace
     allowedTools?: string[]
     options: {
       signal?: AbortSignal
@@ -165,7 +163,7 @@ export async function transformMessagesAndFetch(
     // replace prompt variables
     assistant.prompt = await replacePromptVariables(assistant.prompt, assistant.model?.name)
 
-    // 专用图像生成模型直接走 fetchImageGeneration
+    // 涓撶敤鍥惧儚鐢熸垚妯″瀷鐩存帴璧?fetchImageGeneration
     const model = assistant.model || getDefaultModel()
     if (isDedicatedImageGenerationModel(model)) {
       await fetchImageGeneration({
@@ -251,7 +249,7 @@ export async function fetchChatCompletion({
     ]
   }
 
-  // 使用 transformParameters 模块构建参数
+  // 浣跨敤 transformParameters 妯″潡鏋勫缓鍙傛暟
   const {
     params: aiSdkParams,
     modelId,
@@ -305,27 +303,31 @@ export async function fetchChatCompletion({
 }
 
 /**
- * 从消息中收集图像（用于图像编辑）
- * 收集用户消息中上传的图像和助手消息中生成的图像
+ * Collect input images for image edits from the latest user and assistant messages.
  */
 async function collectImagesFromMessages(userMessage: Message, assistantMessage?: Message): Promise<string[]> {
   const images: string[] = []
 
-  // 收集用户消息中的图像
   const userImageBlocks = findImageBlocks(userMessage)
   for (const block of userImageBlocks) {
-    if (block.file) {
-      const base64 = await FileManager.readBase64File(block.file)
-      const mimeType = block.file.type || 'image/png'
-      images.push(`data:${mimeType};base64,${base64}`)
+    if (!block.file) {
+      continue
     }
+
+    const base64 = await FileManager.readBase64File(block.file)
+    images.push(toBase64ImageDataUrl(block.file, base64))
   }
 
-  // 收集助手消息中的图像（用于继续编辑生成的图像）
   if (assistantMessage) {
     const assistantImageBlocks = findImageBlocks(assistantMessage)
     for (const block of assistantImageBlocks) {
-      if (block.url) {
+      if (block.file) {
+        const base64 = await FileManager.readBase64File(block.file)
+        images.push(toBase64ImageDataUrl(block.file, base64))
+        continue
+      }
+
+      if (block.url && isDirectImageInput(block.url)) {
         images.push(block.url)
       }
     }
@@ -334,10 +336,17 @@ async function collectImagesFromMessages(userMessage: Message, assistantMessage?
   return images
 }
 
+function toBase64ImageDataUrl(file: FileMetadata, base64: string): string {
+  const mimeType = mime.getType(file.path || file.name || `${file.id}${file.ext}`) || 'image/png'
+  return `data:${mimeType};base64,${base64}`
+}
+
+function isDirectImageInput(url: string): boolean {
+  return url.startsWith('http://') || url.startsWith('https://') || url.startsWith('data:')
+}
+
 /**
- * 独立的图像生成函数
- * 专用于 DALL-E、GPT-Image-1 等专用图像生成模型
- */
+ * 鐙珛鐨勫浘鍍忕敓鎴愬嚱鏁? * 涓撶敤浜?DALL-E銆丟PT-Image-1 绛変笓鐢ㄥ浘鍍忕敓鎴愭ā鍨? */
 export async function fetchImageGeneration({
   messages,
   assistant,
@@ -347,7 +356,7 @@ export async function fetchImageGeneration({
   assistant: Assistant
   onChunkReceived: (chunk: Chunk) => void
 }) {
-  // 创建 AI provider
+  // 鍒涘缓 AI provider
   const baseProvider = getProviderByModel(assistant.model || getDefaultModel())
   const providerWithRotatedKey = {
     ...baseProvider,
@@ -361,7 +370,7 @@ export async function fetchImageGeneration({
   const startTime = Date.now()
 
   try {
-    // 提取 prompt 和图像
+    // 鎻愬彇 prompt 鍜屽浘鍍?    const lastUserMessage = messages.findLast((m) => m.role === 'user')
     const lastUserMessage = messages.findLast((m) => m.role === 'user')
     const lastAssistantMessage = messages.findLast((m) => m.role === 'assistant')
 
@@ -372,8 +381,8 @@ export async function fetchImageGeneration({
     const prompt = getMainTextContent(lastUserMessage)
     const inputImages = await collectImagesFromMessages(lastUserMessage, lastAssistantMessage)
 
-    // 调用 generateImage 或 editImage
-    // 使用默认图像生成配置
+    // 璋冪敤 generateImage 鎴?editImage
+    // 浣跨敤榛樿鍥惧儚鐢熸垚閰嶇疆
     const imageSize = '1024x1024'
     const batchSize = 1
 
@@ -394,7 +403,7 @@ export async function fetchImageGeneration({
       })
     }
 
-    // 发送结果 chunks
+    // 鍙戦€佺粨鏋?chunks
     const imageType = images[0]?.startsWith('data:') ? 'base64' : 'url'
     onChunkReceived({
       type: ChunkType.IMAGE_COMPLETE,
@@ -439,7 +448,7 @@ export async function fetchMessagesSummary({
     prompt = await replacePromptVariables(prompt, model.name)
   }
 
-  // 总结上下文总是取最后5条消息
+  // 鎬荤粨涓婁笅鏂囨€绘槸鍙栨渶鍚?鏉℃秷鎭?  const contextMessages = takeRight(messages, 5)
   const contextMessages = takeRight(messages, 5)
   const provider = getProviderByModel(model)
 
@@ -460,15 +469,15 @@ export async function fetchMessagesSummary({
 
   const topicId = messages?.find((message) => message.topicId)?.topicId || ''
 
-  // LLM对多条消息的总结有问题，用单条结构化的消息表示会话内容会更好
+  // LLM瀵瑰鏉℃秷鎭殑鎬荤粨鏈夐棶棰橈紝鐢ㄥ崟鏉＄粨鏋勫寲鐨勬秷鎭〃绀轰細璇濆唴瀹逛細鏇村ソ
   const structredMessages = contextMessages.map((message) => {
     const structredMessage = {
       role: message.role,
       mainText: purifyMarkdownImages(getMainTextContent(message))
     }
 
-    // 让LLM知道消息中包含的文件，但只提供文件名
-    // 对助手消息而言，没有提供工具调用结果等更多信息，仅提供文本上下文。
+    // 璁㎜LM鐭ラ亾娑堟伅涓寘鍚殑鏂囦欢锛屼絾鍙彁渚涙枃浠跺悕
+    // 瀵瑰姪鎵嬫秷鎭€岃█锛屾病鏈夋彁渚涘伐鍏疯皟鐢ㄧ粨鏋滅瓑鏇村淇℃伅锛屼粎鎻愪緵鏂囨湰涓婁笅鏂囥€?    const fileBlocks = findFileBlocks(message)
     const fileBlocks = findFileBlocks(message)
     let fileList: Array<string> = []
     if (fileBlocks.length && fileBlocks.length > 0) {
@@ -519,11 +528,11 @@ export async function fetchMessagesSummary({
     mcpTools: []
   }
   try {
-    // 从 messages 中找到有 traceId 的助手消息，用于绑定现有 trace
+    // 浠?messages 涓壘鍒版湁 traceId 鐨勫姪鎵嬫秷鎭紝鐢ㄤ簬缁戝畾鐜版湁 trace
     const messageWithTrace = messages.find((m) => m.role === 'assistant' && m.traceId)
 
     if (messageWithTrace && messageWithTrace.traceId) {
-      // 导入并调用 appendTrace 来绑定现有 trace，传入summary使用的模型名
+      // 瀵煎叆骞惰皟鐢?appendTrace 鏉ョ粦瀹氱幇鏈?trace锛屼紶鍏ummary浣跨敤鐨勬ā鍨嬪悕
       const { appendTrace } = await import('@renderer/services/SpanManagerService')
       await appendTrace({ topicId, traceId: messageWithTrace.traceId, model })
     }
@@ -833,8 +842,7 @@ export async function checkApi(provider: Provider, model: Model, timeout = 15000
 
   const assistant = getDefaultAssistant()
   assistant.model = model
-  assistant.prompt = 'test' // 避免部分 provider 空系统提示词会报错
-
+  assistant.prompt = 'test' // 閬垮厤閮ㄥ垎 provider 绌虹郴缁熸彁绀鸿瘝浼氭姤閿?
   if (isEmbeddingModel(model)) {
     logger.info('checkApi: embedding model detected, calling getEmbeddingDimensions', { modelId: model.id })
     const timerPromise = new Promise<never>((_, reject) => setTimeout(() => reject(new Error('Timeout')), timeout))
